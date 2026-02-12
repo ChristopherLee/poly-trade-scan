@@ -137,6 +137,17 @@ poly download -o trades.json
 poly download -b 100 --max-rps 100
 ```
 
+**Sample output:**
+
+```
+block_number  timestamp                     tx_hash       wallet        side  tokens    price  total_usdc
+82889791      2026-02-12T12:33:25+00:00     0xd87db9...   0x72406a...   BUY   50.0      0.93   46.5
+82889791      2026-02-12T12:33:25+00:00     0x427ada...   0x298e2a...   BUY   5.0       0.69   3.45
+82889791      2026-02-12T12:33:25+00:00     0x52a9bf...   0xd7b58d...   SELL  0.37      0.59   0.2183
+82889792      2026-02-12T12:33:27+00:00     0xa87f97...   0x56bad0...   BUY   15.826    0.69   10.92
+82889792      2026-02-12T12:33:27+00:00     0xa01b26...   0xe041d0...   SELL  36.0      0.16   5.76
+```
+
 ### Timeouts & Retries
 
 Each RPC request has a 1-second timeout. Not all RPC providers return HTTP 429 when rate limited — some simply hang indefinitely. A healthy RPC should never take more than 1 second to return a block or receipts, so a timeout is a reliable signal that something is wrong.

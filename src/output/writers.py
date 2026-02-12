@@ -35,6 +35,7 @@ def write_stdout(trade: FormattedTrade) -> None:
 
 CSV_FIELDNAMES = [
     "block_number",
+    "timestamp",
     "tx_hash",
     "wallet",
     "side",
@@ -48,6 +49,7 @@ def _trade_to_dict(trade: FormattedTrade) -> dict:
     """Convert FormattedTrade to dict for writing."""
     return {
         "block_number": trade.block_number,
+        "timestamp": trade.timestamp,
         "tx_hash": trade.tx_hash,
         "wallet": trade.wallet,
         "side": trade.side,

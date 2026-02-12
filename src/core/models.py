@@ -26,6 +26,7 @@ class TradeData:
     """Trade data emitted when a matching transaction is found."""
 
     block_number: int
+    timestamp: str  # ISO 8601 UTC timestamp from block
     transaction_hash: str
     wallet: str  # The wallet address that made the trade
     token_id: str

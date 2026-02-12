@@ -2,6 +2,7 @@
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from typing import Callable, Optional
 
 import requests
@@ -119,6 +120,10 @@ class TradeDownloader:
         receipt_map = {r["transactionHash"]: r for r in receipts}
         transactions = block["transactions"]
 
+        # Extract block timestamp (hex Unix epoch → ISO 8601)
+        block_ts = int(block["timestamp"], 16)
+        timestamp = datetime.fromtimestamp(block_ts, tz=timezone.utc).isoformat()
+
         trades = []
         for tx in transactions:
             orders = self.decoder.decode(tx.get("input", ""))
@@ -132,6 +137,7 @@ class TradeDownloader:
             order = orders[0]
             trades.append(TradeData(
                 block_number=block_number,
+                timestamp=timestamp,
                 transaction_hash=tx["hash"],
                 wallet=order.maker,
                 token_id=order.token_id,

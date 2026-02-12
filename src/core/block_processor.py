@@ -1,4 +1,5 @@
 """Block processing for trade extraction."""
+from datetime import datetime, timezone
 from typing import Optional
 
 from src.api.polygon import PolygonClient
@@ -37,6 +38,10 @@ class BlockProcessor:
         block = await self.client.get_block_with_transactions(block_number)
         receipts = await self.client.get_block_receipts(block_number)
 
+        # Extract block timestamp (hex Unix epoch → ISO 8601)
+        block_ts = int(block["timestamp"], 16)
+        timestamp = datetime.fromtimestamp(block_ts, tz=timezone.utc).isoformat()
+
         # Build receipt lookup by tx hash
         receipt_map = {r["transactionHash"]: r for r in receipts}
 
@@ -62,14 +67,14 @@ class BlockProcessor:
                 )
 
             receipt = receipt_map.get(tx["hash"])
-            trade = self._process_transaction(tx, block_number, receipt)
+            trade = self._process_transaction(tx, block_number, timestamp, receipt)
             if trade:
                 trades.append(trade)
 
         return trades
 
     def _process_transaction(
-        self, tx: dict, block_number: int, receipt: Optional[dict]
+        self, tx: dict, block_number: int, timestamp: str, receipt: Optional[dict]
     ) -> Optional[TradeData]:
         """Process single transaction and return TradeData if matching."""
         orders = self.decoder.decode(tx["input"])
@@ -82,6 +87,7 @@ class BlockProcessor:
 
         return TradeData(
             block_number=block_number,
+            timestamp=timestamp,
             transaction_hash=tx["hash"],
             wallet=matching_order.maker,
             token_id=matching_order.token_id,

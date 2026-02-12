@@ -16,6 +16,7 @@ class FormattedTrade:
     total_usdc: float
     tx_hash: str
     block_number: int
+    timestamp: str
 
 
 def format_trade(trade: TradeData) -> FormattedTrade:
@@ -45,4 +46,5 @@ def format_trade(trade: TradeData) -> FormattedTrade:
         total_usdc=usdc,
         tx_hash=trade.transaction_hash,
         block_number=trade.block_number,
+        timestamp=trade.timestamp,
     )
