@@ -8,11 +8,11 @@ import json
 import ssl
 from typing import Optional
 from functools import partial
-from datetime import datetime, timezone
+from datetime import datetime
 
 from src.monitor import TradeMonitor
-from src.api.polymarket import PolymarketWSClient
 from src.core.models import TradeData
+from src.resolution_worker import ResolutionWorker
 from src.utils.logging import get_logger
 from src import db
 
@@ -274,207 +274,6 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace):
     await asyncio.to_thread(db_work)
 
 
-# ── Resolution checker ────────────────────────────────────────────
-
-def process_resolution(conn: db.sqlite3.Connection, market_meta: dict):
-    """Processes resolution for a market given its metadata.
-    
-    market_meta should contain:
-      - condition_id
-      - clob_token_ids (list of token strings)
-      - resolver_raw_payouts (list of floats, e.g. [1.0, 0.0])
-    """
-    cid = market_meta.get("condition_id")
-    clob_ids = market_meta.get("clob_token_ids") or []
-    payouts = market_meta.get("resolver_raw_payouts")
-    
-    if not cid or not clob_ids or payouts is None:
-        return
-
-    # Find all tokens in our DB for this condition_id
-    tokens_in_db = conn.execute(
-        "SELECT token_id FROM markets WHERE condition_id = ?", (cid,)
-    ).fetchall()
-    
-    for row in tokens_in_db:
-        tid = row["token_id"]
-        if tid in clob_ids:
-            idx = clob_ids.index(tid)
-            payout_value = float(payouts[idx])
-            
-            # Check if already resolved to avoid redundant work
-            mkt_status = conn.execute("SELECT resolved FROM markets WHERE token_id=?", (tid,)).fetchone()
-            if mkt_status and mkt_status["resolved"]:
-                continue
-
-            db.mark_resolved(conn, tid, idx, payout_value)
-
-            pos = db.get_position(conn, tid)
-            if pos and pos["size"] > 0.0001:
-                realized_gain = (payout_value * pos["size"]) - pos["cost_basis"]
-                new_realized = pos["realized_pnl"] + realized_gain
-                db.upsert_position(conn, tid, 0.0, 0.0, new_realized)
-
-                mkt = conn.execute("SELECT question FROM markets WHERE token_id=?", (tid,)).fetchone()
-                log.info(
-                    f"[RESOLVED] {mkt['question'] if mkt else tid[:20]} | "
-                    f"payout={payout_value} | PnL=${realized_gain:+.2f}"
-                )
-
-
-def check_resolutions():
-    now = time.time()
-    success_cooldown_seconds = 4 * 60 * 60
-    error_backoff_seconds = [15 * 60, 30 * 60, 60 * 60, 2 * 60 * 60, 4 * 60 * 60]
-    global_backoff_failures = 0
-    global_next_request_at = 0.0
-
-    with db.transaction() as conn:
-        due_rows = conn.execute(
-            "SELECT DISTINCT m.token_id, m.condition_id, m.next_resolution_check "
-            "FROM positions p "
-            "JOIN markets m ON p.token_id = m.token_id "
-            "WHERE p.size > 0.0001 "
-            "AND m.resolved = 0 "
-            "AND (m.next_resolution_check IS NULL OR m.next_resolution_check <= ?)",
-            (now,),
-        ).fetchall()
-
-        skipped_rows = conn.execute(
-            "SELECT DISTINCT m.token_id, m.condition_id, m.next_resolution_check "
-            "FROM positions p "
-            "JOIN markets m ON p.token_id = m.token_id "
-            "WHERE p.size > 0.0001 "
-            "AND m.resolved = 0 "
-            "AND m.next_resolution_check IS NOT NULL "
-            "AND m.next_resolution_check > ?",
-            (now,),
-        ).fetchall()
-
-        for row in skipped_rows:
-            token_or_condition = row["condition_id"] or row["token_id"]
-            next_check = datetime.fromtimestamp(row["next_resolution_check"], tz=timezone.utc).isoformat()
-            log.info(f"Skipping Gamma check for {token_or_condition}: cooldown active until {next_check}")
-
-        if not due_rows:
-            return
-
-        log.info(f"Checking resolution for {len(due_rows)} open positions via API...")
-        processed_conditions = set()
-
-        for row in due_rows:
-            check_started_at = time.time()
-            tid = row["token_id"]
-            cid = row["condition_id"]
-
-            dedupe_key = cid or tid
-            if dedupe_key in processed_conditions:
-                continue
-
-            processed_conditions.add(dedupe_key)
-
-            market_token_ids = [
-                r["token_id"]
-                for r in conn.execute(
-                    "SELECT token_id FROM markets WHERE condition_id = ?",
-                    (cid,),
-                ).fetchall()
-            ] if cid else [tid]
-
-            def _update_schedule(last_check: Optional[float], next_check: Optional[float], failures: int):
-                placeholders = ",".join("?" for _ in market_token_ids)
-                conn.execute(
-                    f"UPDATE markets SET last_resolution_check=?, next_resolution_check=?, resolution_check_failures=? "
-                    f"WHERE token_id IN ({placeholders})",
-                    (last_check, next_check, failures, *market_token_ids),
-                )
-
-            if check_started_at < global_next_request_at:
-                _update_schedule(check_started_at, global_next_request_at, global_backoff_failures)
-                next_check_iso = datetime.fromtimestamp(global_next_request_at, tz=timezone.utc).isoformat()
-                log.info(
-                    f"Skipping Gamma call for {dedupe_key}: global rate-limit cooldown active until {next_check_iso}"
-                )
-                continue
-
-            url = f"https://gamma-api.polymarket.com/markets?clob_token_ids={tid}"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            data = None
-            response_error = None
-            status_code = None
-            try:
-                response = urllib.request.urlopen(req, context=ssl_context)
-                status_code = getattr(response, "status", None)
-                data = json.loads(response.read())
-            except urllib.error.HTTPError as e:
-                status_code = e.code
-                response_error = e
-            except Exception as e:
-                response_error = e
-
-            current_failures = conn.execute(
-                "SELECT COALESCE(MAX(resolution_check_failures), 0) AS failures "
-                "FROM markets WHERE token_id IN ({})".format(
-                    ",".join("?" for _ in market_token_ids)
-                ),
-                market_token_ids,
-            ).fetchone()["failures"]
-
-            if response_error:
-                next_failures = current_failures + 1
-                delay = error_backoff_seconds[min(next_failures - 1, len(error_backoff_seconds) - 1)]
-                next_check = check_started_at + delay
-                _update_schedule(check_started_at, next_check, next_failures)
-
-                if status_code == 429:
-                    global_backoff_failures += 1
-                    global_delay = error_backoff_seconds[
-                        min(global_backoff_failures - 1, len(error_backoff_seconds) - 1)
-                    ]
-                    global_next_request_at = check_started_at + global_delay
-
-                next_check_iso = datetime.fromtimestamp(next_check, tz=timezone.utc).isoformat()
-                log.warning(
-                    f"Gamma check failed for {dedupe_key} (status={status_code}, failures={next_failures}). "
-                    f"Next check at {next_check_iso}. Error: {response_error}"
-                )
-                continue
-
-            global_backoff_failures = 0
-            global_next_request_at = 0.0
-
-            if not data:
-                next_check = check_started_at + success_cooldown_seconds
-                _update_schedule(check_started_at, next_check, 0)
-                next_check_iso = datetime.fromtimestamp(next_check, tz=timezone.utc).isoformat()
-                log.info(f"No Gamma data for {dedupe_key}; next check scheduled at {next_check_iso}")
-                continue
-
-            found_resolution = False
-            for m in data:
-                clob_ids = json.loads(m.get("clobTokenIds", "[]"))
-                if tid in clob_ids:
-                    if m.get("resolved") or m.get("closed"):
-                        payouts = m.get("resolver_raw_payouts")
-                        if payouts:
-                            found_resolution = True
-                            process_resolution(conn, {
-                                "condition_id": m.get("conditionId"),
-                                "clob_token_ids": clob_ids,
-                                "resolver_raw_payouts": payouts
-                            })
-                            break
-
-            if found_resolution:
-                log.info(f"Resolved market {dedupe_key}; cleared resolution schedule")
-                continue
-
-            next_check = check_started_at + success_cooldown_seconds
-            _update_schedule(check_started_at, next_check, 0)
-            next_check_iso = datetime.fromtimestamp(next_check, tz=timezone.utc).isoformat()
-            log.info(f"Market {dedupe_key} unresolved; next Gamma check at {next_check_iso}")
-
-
 def check_missing_metadata():
     """Polls the DB for markets with placeholder metadata and retries fetching them."""
     with db.transaction() as conn:
@@ -511,30 +310,6 @@ def check_missing_metadata():
             # Throttle API calls
             time.sleep(0.5)
 
-
-async def on_market_resolved(event: dict):
-    """Handle instantaneous market resolution from WebSocket."""
-    data = event.get("data", event)
-    log.info(f"Instant market resolution received for condition {data.get('condition_id', 'unknown')}")
-    
-    clob_ids = data.get("clob_token_ids")
-    if isinstance(clob_ids, str):
-        try: clob_ids = json.loads(clob_ids)
-        except: pass
-            
-    payouts = data.get("resolver_raw_payouts")
-    if isinstance(payouts, str):
-        try: payouts = json.loads(payouts)
-        except: pass
-
-    with db.transaction() as conn:
-        process_resolution(conn, {
-            "condition_id": data.get("condition_id"),
-            "clob_token_ids": clob_ids,
-            "resolver_raw_payouts": payouts
-        })
-
-
 # ── Main ──────────────────────────────────────────────────────────
 
 async def main():
@@ -553,6 +328,11 @@ async def main():
                         help="Number of top wallets to fetch from leaderboard")
     parser.add_argument("--db", type=str, default=None,
                         help="Path to SQLite database file (default: paper_trades.db)")
+    parser.add_argument(
+        "--run-resolution-inline",
+        action="store_true",
+        help="Run resolution polling/WS inside this process (default: disabled; use resolution_worker.py).",
+    )
 
     args = parser.parse_args()
 
@@ -602,18 +382,14 @@ async def main():
     try:
         await monitor.start(target_wallets)
 
-        # Resolution checking
-        pm_client = PolymarketWSClient()
-        pm_client.on("market_resolved", on_market_resolved)
-        asyncio.create_task(pm_client.start())
-
-        async def resolution_loop():
-            while True:
-                # Poll as fallback every 30 minutes instead of 10
-                await asyncio.sleep(1800)
-                await asyncio.to_thread(check_resolutions)
-
-        asyncio.create_task(resolution_loop())
+        if args.run_resolution_inline:
+            resolution_worker = ResolutionWorker(db_path=args.db, poll_interval_seconds=1800)
+            asyncio.create_task(resolution_worker.run())
+            log.info("Resolution worker running inline with live simulator")
+        else:
+            log.warning(
+                "Inline resolution worker disabled. Start it separately: python resolution_worker.py --db <path>"
+            )
 
         async def metadata_backfill_loop():
             while True:

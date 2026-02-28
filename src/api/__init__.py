@@ -1,3 +1,3 @@
-"""External API clients."""
-from .polygon import PolygonClient
-from .polymarket import PolymarketWSClient
+"""External API clients package."""
+
+__all__ = ["polygon", "polymarket"]
