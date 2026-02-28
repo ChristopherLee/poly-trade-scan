@@ -80,6 +80,7 @@ class PolymarketWSClient:
                 try:
                     data = json.loads(message)
                     if isinstance(data, list):
+                        log.info("Received WS batch message", event_count=len(data))
                         for event in data:
                             self._handle_event(event)
                     else:
@@ -97,9 +98,16 @@ class PolymarketWSClient:
         """Distribute events to registered callbacks."""
         if not isinstance(event, dict):
             return
-            
+
         event_type = event.get("event_type") or event.get("type")
+        if event_type:
+            log.info("Polymarket WS event", event_type=event_type)
         if event_type == "market_resolved":
+            payload = event.get("data", event)
+            log.info(
+                "Forwarding market_resolved event",
+                condition_id=payload.get("condition_id") or payload.get("conditionId"),
+            )
             self.emit("market_resolved", event)
 
     async def disconnect(self) -> None:
