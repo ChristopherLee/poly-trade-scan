@@ -51,6 +51,9 @@ class TestResolutionWorkerRealPayload(unittest.TestCase):
         target_index = clob_ids.index(self.TOKEN_ID)
         expected_payout = payouts[target_index]
 
+        outcomes = worker._parse_maybe_json_list(market.get("outcomes")) or []
+        winning_label = outcomes[payouts.index(max(payouts))] if outcomes else None
+
         fd, db_path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
         try:
@@ -70,19 +73,26 @@ class TestResolutionWorkerRealPayload(unittest.TestCase):
                 "conditionId": market.get("conditionId"),
                 "clobTokenIds": market.get("clobTokenIds"),
                 "outcomePrices": market.get("outcomePrices"),
+                "outcomes": market.get("outcomes"),
                 "closed": True,
             }
             asyncio.run(ResolutionWorker(db_path=db_path).on_market_resolved(ws_event))
 
             with db.transaction(db_path=db_path) as conn:
                 resolved_row = conn.execute(
-                    "SELECT resolved, payout_value FROM markets WHERE token_id = ?",
+                    "SELECT resolved, payout_value, winning_outcome FROM markets WHERE token_id = ?",
                     (self.TOKEN_ID,),
                 ).fetchone()
 
             self.assertIsNotNone(resolved_row)
             self.assertEqual(resolved_row["resolved"], 1)
             self.assertAlmostEqual(float(resolved_row["payout_value"]), float(expected_payout), places=7)
+
+            expected_winning_idx = payouts.index(max(payouts))
+            self.assertEqual(resolved_row["winning_outcome"], expected_winning_idx)
+            if winning_label is not None:
+                self.assertEqual(winning_label, outcomes[resolved_row["winning_outcome"]])
+                self.assertTrue(str(winning_label).strip())
         finally:
             os.remove(db_path)
 

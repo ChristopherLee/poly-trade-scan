@@ -95,17 +95,44 @@ class ResolutionWorker:
 
         return None
 
+    def _find_winning_outcome(self, payouts: list[float]):
+        """Return winning outcome index when there is a clear winner, otherwise None."""
+        if not payouts:
+            return None
+
+        max_payout = max(payouts)
+        winner_indices = [idx for idx, payout in enumerate(payouts) if payout == max_payout]
+        if len(winner_indices) != 1:
+            return None
+
+        return winner_indices[0]
+
     def process_resolution(self, conn: db.sqlite3.Connection, market_meta: dict) -> None:
         """Processes resolution for a market given its metadata."""
         cid = market_meta.get("condition_id")
         clob_ids = market_meta.get("clob_token_ids") or []
         payouts = market_meta.get("resolver_raw_payouts")
+        outcomes = self._parse_maybe_json_list(market_meta.get("outcomes"))
+        winning_outcome_idx = self._find_winning_outcome(payouts) if isinstance(payouts, list) else None
+        winning_token_id = (
+            clob_ids[winning_outcome_idx]
+            if winning_outcome_idx is not None and winning_outcome_idx < len(clob_ids)
+            else None
+        )
+        winning_outcome_label = (
+            outcomes[winning_outcome_idx]
+            if isinstance(outcomes, list) and winning_outcome_idx is not None and winning_outcome_idx < len(outcomes)
+            else None
+        )
 
         log.info(
             "Processing resolution payload",
             condition_id=cid,
             token_count=len(clob_ids),
             payout_count=len(payouts) if isinstance(payouts, list) else None,
+            winning_outcome_idx=winning_outcome_idx,
+            winning_outcome_label=winning_outcome_label,
+            winning_token_id=winning_token_id,
         )
 
         if not cid or not clob_ids or payouts is None:
@@ -140,7 +167,7 @@ class ResolutionWorker:
                 skipped_tokens += 1
                 continue
 
-            db.mark_resolved(conn, tid, idx, payout_value)
+            db.mark_resolved(conn, tid, winning_outcome_idx if winning_outcome_idx is not None else idx, payout_value)
             resolved_tokens += 1
 
             pos = db.get_position(conn, tid)
@@ -158,6 +185,9 @@ class ResolutionWorker:
                     question=mkt["question"] if mkt else tid[:20],
                     payout=payout_value,
                     realized_gain=round(realized_gain, 2),
+                    winning_outcome_idx=winning_outcome_idx,
+                    winning_outcome_label=winning_outcome_label,
+                    winning_token_id=winning_token_id,
                 )
 
         log.info(
@@ -165,6 +195,9 @@ class ResolutionWorker:
             condition_id=cid,
             resolved_tokens=resolved_tokens,
             skipped_tokens=skipped_tokens,
+            winning_outcome_idx=winning_outcome_idx,
+            winning_outcome_label=winning_outcome_label,
+            winning_token_id=winning_token_id,
         )
 
     def check_resolutions(self) -> None:
@@ -352,6 +385,7 @@ class ResolutionWorker:
                                 "condition_id": market_payload.get("conditionId"),
                                 "clob_token_ids": clob_ids,
                                 "resolver_raw_payouts": payouts,
+                                "outcomes": market_payload.get("outcomes"),
                             },
                         )
                         break
@@ -411,6 +445,7 @@ class ResolutionWorker:
                     "condition_id": condition_id,
                     "clob_token_ids": clob_ids,
                     "resolver_raw_payouts": payouts,
+                    "outcomes": data.get("outcomes"),
                 },
             )
 
