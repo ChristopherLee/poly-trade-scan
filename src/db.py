@@ -65,6 +65,7 @@ def init_db(db_path: Optional[str] = None) -> None:
         outcome_idx     INTEGER,        -- which index this token represents
         slug            TEXT,
         category        TEXT,           -- e.g. 'Weather', 'Politics', 'Crypto'
+        group_item_title TEXT,          -- granular series/instrument bucket from Gamma
         tags            TEXT,           -- JSON array of tag strings
         resolved        INTEGER DEFAULT 0,
         winning_outcome INTEGER,        -- 0 or 1
@@ -177,6 +178,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "tags" not in market_cols:
         conn.execute("ALTER TABLE markets ADD COLUMN tags TEXT")
         conn.commit()
+    if "group_item_title" not in market_cols:
+        conn.execute("ALTER TABLE markets ADD COLUMN group_item_title TEXT")
+        conn.commit()
 
     existing_tables = {
         row[0]
@@ -228,10 +232,10 @@ def upsert_market(conn: sqlite3.Connection, token_id: str,
                   question: str = "", outcomes: str = "[]",
                   outcome_idx: int = 0, condition_id: str = "",
                   slug: str = "", category: str = "",
-                  tags: str = "[]") -> None:
+                  group_item_title: str = "", tags: str = "[]") -> None:
     conn.execute("""
-        INSERT INTO markets (token_id, condition_id, question, outcomes, outcome_idx, slug, category, tags, first_seen)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO markets (token_id, condition_id, question, outcomes, outcome_idx, slug, category, group_item_title, tags, first_seen)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(token_id) DO UPDATE SET
             question = CASE 
                 WHEN excluded.question = 'Unknown / Pending Metadata' AND markets.question != '' AND markets.question IS NOT NULL 
@@ -242,8 +246,9 @@ def upsert_market(conn: sqlite3.Connection, token_id: str,
             outcome_idx = excluded.outcome_idx,
             condition_id = COALESCE(NULLIF(excluded.condition_id, ''), markets.condition_id),
             category = COALESCE(NULLIF(excluded.category, ''), markets.category),
+            group_item_title = COALESCE(NULLIF(excluded.group_item_title, ''), markets.group_item_title),
             tags = COALESCE(NULLIF(excluded.tags, '[]'), markets.tags)
-    """, (token_id, condition_id, question, outcomes, outcome_idx, slug, category, tags, time.time()))
+    """, (token_id, condition_id, question, outcomes, outcome_idx, slug, category, group_item_title, tags, time.time()))
     conn.commit()
 
 
