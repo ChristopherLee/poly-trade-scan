@@ -68,6 +68,29 @@ python dashboard.py
 # Access at http://localhost:8050
 ```
 
+
+### Dashboard Test Data (Recommended)
+Use the commands below to get deterministic local data for UI testing:
+
+```bash
+# 1) Build a sample DB with one wallet/market/trade/position
+python scripts/generate_sample_db.py
+
+# 2) Point the dashboard at this sample data
+cp assets/sample_paper_trades.db paper_trades.db
+python dashboard.py
+```
+
+If you want live data and only need a single captured trade, use the trade cap:
+
+```bash
+python live_paper_trade.py --db assets/live_one_trade.db --category crypto --limit 5 --size 25 --max-trades 1
+```
+
+Notes:
+- `--max-trades 1` exits automatically after the first processed trade is saved.
+- If Polygon websocket access fails in the environment (e.g. HTTP 502), fall back to `scripts/generate_sample_db.py` for dashboard QA.
+
 ---
 
 ## 💡 Agent Tips & "Gotchas"
