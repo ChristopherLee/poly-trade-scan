@@ -62,6 +62,9 @@ def fetch_market_metadata(token_id: str) -> Optional[dict]:
                 t.get("label", t) if isinstance(t, dict) else str(t)
                 for t in raw_tags
             ]
+            primary_category = (m.get("category") or "").strip()
+            group_item_title = (m.get("groupItemTitle") or "").strip()
+
             return {
                 "id": m.get("id", ""),
                 "question": m.get("question", ""),
@@ -70,7 +73,10 @@ def fetch_market_metadata(token_id: str) -> Optional[dict]:
                 "outcome_idx": outcome_idx,
                 "condition_id": m.get("conditionId", ""),
                 "slug": m.get("slug", ""),
-                "category": m.get("groupItemTitle", "") or m.get("category", ""),
+                # Gamma's top-level `category` field has broad labels (Weather, Crypto, ...).
+                # `groupItemTitle` is often a sub-group/strike bucket and should only be fallback.
+                "category": primary_category or group_item_title,
+                "group_item_title": group_item_title,
                 "tags": json.dumps(tag_labels),
                 "resolved": bool(m.get("resolved")),
                 "closed": bool(m.get("closed")),
@@ -135,6 +141,7 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace):
                     condition_id=meta.get("condition_id", ""),
                     slug=meta.get("slug", ""),
                     category=meta.get("category", ""),
+                    group_item_title=meta.get("group_item_title", ""),
                     tags=meta.get("tags", "[]"),
                 )
             else:
@@ -472,7 +479,13 @@ def check_missing_metadata():
     """Polls the DB for markets with placeholder metadata and retries fetching them."""
     with db.transaction() as conn:
         rows = conn.execute(
-            "SELECT token_id FROM markets WHERE question = 'Unknown / Pending Metadata'"
+            """
+            SELECT token_id
+            FROM markets
+            WHERE question = 'Unknown / Pending Metadata'
+               OR category GLOB '*[0-9$]*'
+               OR category LIKE '%,%'
+            """
         ).fetchall()
         
         if not rows:
@@ -491,6 +504,7 @@ def check_missing_metadata():
                     condition_id=meta.get("condition_id", ""),
                     slug=meta.get("slug", ""),
                     category=meta.get("category", ""),
+                    group_item_title=meta.get("group_item_title", ""),
                     tags=meta.get("tags", "[]"),
                 )
                 log.info(f"  Successfully backfilled metadata for {tid[:10]}…: {meta['question'][:50]}")

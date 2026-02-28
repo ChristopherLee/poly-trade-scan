@@ -131,7 +131,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                    pt.cost_usd as paper_cost, pt.slippage,
                    pt.orderbook_latency_ms, pt.detection_delay_ms, pt.execution_delay_ms, pt.total_delay_ms,
                    pt.no_fill_reason,
-                   m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category, m.slug
+                   m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category, m.group_item_title, m.slug
             FROM target_trades tt
             LEFT JOIN paper_trades pt ON pt.target_trade_id = tt.id
             LEFT JOIN markets m ON m.token_id = tt.token_id
@@ -168,7 +168,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         query = """
             SELECT p.token_id, p.size, p.cost_basis, p.realized_pnl, p.updated_at,
-                   m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category, m.slug,
+                   m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category, m.group_item_title, m.slug,
                    (SELECT pt.avg_price FROM paper_trades pt WHERE pt.token_id = p.token_id ORDER BY pt.created_at DESC LIMIT 1) as last_price
             FROM positions p
             LEFT JOIN markets m ON m.token_id = p.token_id

@@ -40,13 +40,17 @@ def fetch_market_metadata(token_id: str) -> Optional[dict]:
                 for t in raw_tags
             ]
             
+            primary_category = (m.get("category") or "").strip()
+            group_item_title = (m.get("groupItemTitle") or "").strip()
+
             return {
                 "question": m.get("question", ""),
                 "outcomes_json": json.dumps(outcomes_list),
                 "outcome_idx": outcome_idx,
                 "condition_id": m.get("conditionId", ""),
                 "slug": m.get("slug", ""),
-                "category": m.get("groupItemTitle", "") or m.get("category", ""),
+                "category": primary_category or group_item_title,
+                "group_item_title": group_item_title,
                 "tags": json.dumps(tag_labels),
             }
     return None
@@ -79,6 +83,7 @@ def backfill_metadata():
                         condition_id=meta["condition_id"],
                         slug=meta["slug"],
                         category=meta["category"],
+                        group_item_title=meta.get("group_item_title", ""),
                         tags=meta["tags"]
                     )
                 print(f"  Updated DB.")
