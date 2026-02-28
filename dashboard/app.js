@@ -178,6 +178,8 @@ async function loadTrades() {
         const outcomes = Array.isArray(t.outcomes) ? t.outcomes : [];
         const outcomeLabel = outcomes[t.outcome_idx] || '?';
         const question = t.question || '—';
+        const groupItemTitle = (t.group_item_title || '').trim();
+        const showGroupItem = groupItemTitle && groupItemTitle.toLowerCase() !== (t.category || '').toLowerCase();
         const statusBadge = t.resolved
             ? `<span class="badge badge-resolved">Resolved</span>`
             : `<span class="badge badge-open">Open</span>`;
@@ -193,7 +195,7 @@ async function loadTrades() {
         <tr>
             <td><a href="https://polygonscan.com/tx/${t.tx_hash}" target="_blank" class="tx-link">${fmtTime(t.onchain_ts)}</a></td>
             <td class="mono"><a href="https://polygonscan.com/address/${t.wallet}" target="_blank" class="wallet-link">${fmtAddr(t.wallet)}</a></td>
-            <td class="truncate" title="${question}">${marketLink}<br><small style="color:var(--text-muted)">${outcomeLabel}</small></td>
+            <td class="truncate" title="${question}">${marketLink}<br><small style="color:var(--text-muted)">${outcomeLabel}${showGroupItem ? ` • ${groupItemTitle}` : ''}</small></td>
             <td><span class="badge badge-resolved" style="background:var(--bg-card); border:1px solid var(--border)">${t.category || 'Other'}</span></td>
             <td>${sideBadge}</td>
             <td class="mono">$${(t.target_price || 0).toFixed(4)}</td>
