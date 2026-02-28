@@ -23,6 +23,78 @@ class ResolutionWorker:
         self.db_path = db_path
         self.poll_interval_seconds = poll_interval_seconds
 
+    def _parse_maybe_json_list(self, value):
+        """Parse a list that may be a native list or JSON-encoded string."""
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                return parsed if isinstance(parsed, list) else None
+            except Exception:
+                return None
+        return None
+
+    def _normalize_payouts(self, payload: dict, clob_ids: list):
+        """Normalize payouts from supported payload fields.
+
+        Returns a tuple: (payouts, source_name) or None when unavailable/invalid.
+        """
+        source_candidates = [
+            ("resolver_raw_payouts", payload.get("resolver_raw_payouts")),
+            ("outcomePrices", payload.get("outcomePrices")),
+        ]
+
+        condition_id = payload.get("conditionId") or payload.get("condition_id")
+        token_id = payload.get("token_id")
+        dedupe_key = payload.get("dedupe_key")
+
+        for source_name, raw_value in source_candidates:
+            if raw_value is None:
+                continue
+
+            parsed = self._parse_maybe_json_list(raw_value)
+            if parsed is None:
+                log.warning(
+                    "Resolution payouts field is not a parseable list",
+                    dedupe_key=dedupe_key,
+                    condition_id=condition_id,
+                    token_id=token_id,
+                    source=source_name,
+                    raw_value=raw_value,
+                )
+                continue
+
+            try:
+                payouts = [float(value) for value in parsed]
+            except (TypeError, ValueError):
+                log.warning(
+                    "Resolution payouts field contains non-numeric values",
+                    dedupe_key=dedupe_key,
+                    condition_id=condition_id,
+                    token_id=token_id,
+                    source=source_name,
+                    raw_value=raw_value,
+                )
+                continue
+
+            if not clob_ids or len(payouts) != len(clob_ids):
+                log.warning(
+                    "Resolution payouts length mismatch",
+                    dedupe_key=dedupe_key,
+                    condition_id=condition_id,
+                    token_id=token_id,
+                    source=source_name,
+                    clob_count=len(clob_ids) if isinstance(clob_ids, list) else None,
+                    payout_count=len(payouts),
+                    raw_value=raw_value,
+                )
+                continue
+
+            return payouts, source_name
+
+        return None
+
     def process_resolution(self, conn: db.sqlite3.Connection, market_meta: dict) -> None:
         """Processes resolution for a market given its metadata."""
         cid = market_meta.get("condition_id")
@@ -236,28 +308,53 @@ class ResolutionWorker:
 
                 found_resolution = False
                 for market_payload in data:
-                    clob_ids = json.loads(market_payload.get("clobTokenIds", "[]"))
+                    clob_ids = self._parse_maybe_json_list(market_payload.get("clobTokenIds")) or []
                     if tid not in clob_ids:
                         continue
 
                     if market_payload.get("resolved") or market_payload.get("closed"):
-                        payouts = market_payload.get("resolver_raw_payouts")
-                        if payouts:
-                            found_resolution = True
-                            log.info(
-                                "Gamma indicates market resolved",
+                        payload_for_normalize = {
+                            **market_payload,
+                            "token_id": tid,
+                            "dedupe_key": dedupe_key,
+                        }
+                        normalized = self._normalize_payouts(payload_for_normalize, clob_ids)
+                        if not normalized:
+                            log.warning(
+                                "Gamma market is closed/resolved but payouts unavailable/invalid",
                                 dedupe_key=dedupe_key,
                                 condition_id=market_payload.get("conditionId"),
+                                token_id=tid,
                             )
-                            self.process_resolution(
-                                conn,
-                                {
-                                    "condition_id": market_payload.get("conditionId"),
-                                    "clob_token_ids": clob_ids,
-                                    "resolver_raw_payouts": payouts,
-                                },
+                            continue
+
+                        payouts, source_name = normalized
+                        found_resolution = True
+                        if source_name != "resolver_raw_payouts":
+                            log.info(
+                                "Gamma resolution used fallback payout source",
+                                dedupe_key=dedupe_key,
+                                condition_id=market_payload.get("conditionId"),
+                                token_id=tid,
+                                source=source_name,
                             )
-                            break
+
+                        log.info(
+                            "Gamma indicates market resolved",
+                            dedupe_key=dedupe_key,
+                            condition_id=market_payload.get("conditionId"),
+                            token_id=tid,
+                            payout_source=source_name,
+                        )
+                        self.process_resolution(
+                            conn,
+                            {
+                                "condition_id": market_payload.get("conditionId"),
+                                "clob_token_ids": clob_ids,
+                                "resolver_raw_payouts": payouts,
+                            },
+                        )
+                        break
 
                 if found_resolution:
                     log.info("Resolution applied from Gamma poll", dedupe_key=dedupe_key)
@@ -271,22 +368,41 @@ class ResolutionWorker:
     async def on_market_resolved(self, event: dict) -> None:
         """Handle instantaneous market resolution from Polymarket WS."""
         data = event.get("data", event)
-        condition_id = data.get("condition_id")
+        condition_id = data.get("condition_id") or data.get("conditionId")
+        clob_ids = self._parse_maybe_json_list(data.get("clob_token_ids"))
+        if clob_ids is None:
+            clob_ids = self._parse_maybe_json_list(data.get("clobTokenIds"))
+
         log.info("WS market_resolved event received", condition_id=condition_id, raw_keys=sorted(list(data.keys())))
 
-        clob_ids = data.get("clob_token_ids")
-        if isinstance(clob_ids, str):
-            try:
-                clob_ids = json.loads(clob_ids)
-            except Exception:
-                log.warning("Unable to parse clob_token_ids from WS event", condition_id=condition_id)
+        if not condition_id or not clob_ids:
+            log.warning(
+                "Skipping WS resolution event due to missing identifiers",
+                condition_id=condition_id,
+                has_clob_ids=bool(clob_ids),
+                present_keys=sorted(list(data.keys())),
+            )
+            return
 
-        payouts = data.get("resolver_raw_payouts")
-        if isinstance(payouts, str):
-            try:
-                payouts = json.loads(payouts)
-            except Exception:
-                log.warning("Unable to parse resolver_raw_payouts from WS event", condition_id=condition_id)
+        normalized = self._normalize_payouts(data, clob_ids)
+        if not normalized:
+            log.warning(
+                "WS market is closed/resolved but payouts unavailable/invalid",
+                dedupe_key=condition_id,
+                condition_id=condition_id,
+                token_id=clob_ids[0] if clob_ids else None,
+            )
+            return
+
+        payouts, source_name = normalized
+        if source_name != "resolver_raw_payouts":
+            log.info(
+                "WS resolution used fallback payout source",
+                dedupe_key=condition_id,
+                condition_id=condition_id,
+                token_id=clob_ids[0] if clob_ids else None,
+                source=source_name,
+            )
 
         with db.transaction(db_path=self.db_path) as conn:
             self.process_resolution(
