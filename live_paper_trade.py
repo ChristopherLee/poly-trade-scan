@@ -319,6 +319,8 @@ def check_resolutions():
     now = time.time()
     success_cooldown_seconds = 4 * 60 * 60
     error_backoff_seconds = [15 * 60, 30 * 60, 60 * 60, 2 * 60 * 60, 4 * 60 * 60]
+    global_backoff_failures = 0
+    global_next_request_at = 0.0
 
     with db.transaction() as conn:
         due_rows = conn.execute(
@@ -327,8 +329,8 @@ def check_resolutions():
             "JOIN markets m ON p.token_id = m.token_id "
             "WHERE p.size > 0.0001 "
             "AND m.resolved = 0 "
-            "AND (m.next_resolution_check IS NULL OR m.next_resolution_check <= ?)"
-            , (now,)
+            "AND (m.next_resolution_check IS NULL OR m.next_resolution_check <= ?)",
+            (now,),
         ).fetchall()
 
         skipped_rows = conn.execute(
@@ -338,15 +340,15 @@ def check_resolutions():
             "WHERE p.size > 0.0001 "
             "AND m.resolved = 0 "
             "AND m.next_resolution_check IS NOT NULL "
-            "AND m.next_resolution_check > ?"
-            , (now,)
+            "AND m.next_resolution_check > ?",
+            (now,),
         ).fetchall()
 
         for row in skipped_rows:
             token_or_condition = row["condition_id"] or row["token_id"]
             next_check = datetime.fromtimestamp(row["next_resolution_check"], tz=timezone.utc).isoformat()
             log.info(f"Skipping Gamma check for {token_or_condition}: cooldown active until {next_check}")
-        
+
         if not due_rows:
             return
 
@@ -354,6 +356,7 @@ def check_resolutions():
         processed_conditions = set()
 
         for row in due_rows:
+            check_started_at = time.time()
             tid = row["token_id"]
             cid = row["condition_id"]
 
@@ -371,13 +374,21 @@ def check_resolutions():
                 ).fetchall()
             ] if cid else [tid]
 
-            def _update_schedule(last_check: float, next_check: float, failures: int):
+            def _update_schedule(last_check: Optional[float], next_check: Optional[float], failures: int):
                 placeholders = ",".join("?" for _ in market_token_ids)
                 conn.execute(
                     f"UPDATE markets SET last_resolution_check=?, next_resolution_check=?, resolution_check_failures=? "
                     f"WHERE token_id IN ({placeholders})",
                     (last_check, next_check, failures, *market_token_ids),
                 )
+
+            if check_started_at < global_next_request_at:
+                _update_schedule(check_started_at, global_next_request_at, global_backoff_failures)
+                next_check_iso = datetime.fromtimestamp(global_next_request_at, tz=timezone.utc).isoformat()
+                log.info(
+                    f"Skipping Gamma call for {dedupe_key}: global rate-limit cooldown active until {next_check_iso}"
+                )
+                continue
 
             url = f"https://gamma-api.polymarket.com/markets?clob_token_ids={tid}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -405,8 +416,16 @@ def check_resolutions():
             if response_error:
                 next_failures = current_failures + 1
                 delay = error_backoff_seconds[min(next_failures - 1, len(error_backoff_seconds) - 1)]
-                next_check = now + delay
-                _update_schedule(now, next_check, next_failures)
+                next_check = check_started_at + delay
+                _update_schedule(check_started_at, next_check, next_failures)
+
+                if status_code == 429:
+                    global_backoff_failures += 1
+                    global_delay = error_backoff_seconds[
+                        min(global_backoff_failures - 1, len(error_backoff_seconds) - 1)
+                    ]
+                    global_next_request_at = check_started_at + global_delay
+
                 next_check_iso = datetime.fromtimestamp(next_check, tz=timezone.utc).isoformat()
                 log.warning(
                     f"Gamma check failed for {dedupe_key} (status={status_code}, failures={next_failures}). "
@@ -414,9 +433,12 @@ def check_resolutions():
                 )
                 continue
 
+            global_backoff_failures = 0
+            global_next_request_at = 0.0
+
             if not data:
-                next_check = now + success_cooldown_seconds
-                _update_schedule(now, next_check, 0)
+                next_check = check_started_at + success_cooldown_seconds
+                _update_schedule(check_started_at, next_check, 0)
                 next_check_iso = datetime.fromtimestamp(next_check, tz=timezone.utc).isoformat()
                 log.info(f"No Gamma data for {dedupe_key}; next check scheduled at {next_check_iso}")
                 continue
@@ -440,8 +462,8 @@ def check_resolutions():
                 log.info(f"Resolved market {dedupe_key}; cleared resolution schedule")
                 continue
 
-            next_check = now + success_cooldown_seconds
-            _update_schedule(now, next_check, 0)
+            next_check = check_started_at + success_cooldown_seconds
+            _update_schedule(check_started_at, next_check, 0)
             next_check_iso = datetime.fromtimestamp(next_check, tz=timezone.utc).isoformat()
             log.info(f"Market {dedupe_key} unresolved; next Gamma check at {next_check_iso}")
 
