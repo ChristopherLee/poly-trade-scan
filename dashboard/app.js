@@ -136,16 +136,20 @@ async function loadCategories() {
     const data = await api('/api/markets');
     if (!data) return;
     const categories = [...new Set(data.map(m => m.category).filter(Boolean))].sort();
-    const select = document.getElementById('filter-category');
-    const current = select.value;
-    select.innerHTML = '<option value="">All Categories</option>';
-    categories.forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat;
-        opt.textContent = cat;
-        select.appendChild(opt);
+
+    ['filter-category', 'position-category'].forEach((id) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = '<option value="">All Categories</option>';
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            select.appendChild(opt);
+        });
+        select.value = current;
     });
-    select.value = current;
 }
 
 function filterByWallet(addr) {
@@ -154,29 +158,74 @@ function filterByWallet(addr) {
     loadTrades();
 }
 
+function predictedDirectionLabel(side, outcomes, outcomeIdx) {
+    const selectedOutcome = outcomes?.[outcomeIdx] || '?';
+    if (side === 'BUY') {
+        return selectedOutcome;
+    }
+    if (Array.isArray(outcomes) && outcomes.length === 2 && Number.isInteger(outcomeIdx)) {
+        return outcomes[1 - outcomeIdx] || `Not ${selectedOutcome}`;
+    }
+    return `Not ${selectedOutcome}`;
+}
+
 // ── Trades ────────────────────────────────────────────────────────
 async function loadTrades() {
     const wallet = document.getElementById('filter-wallet').value;
     const resolved = document.getElementById('filter-resolved').value;
     const category = document.getElementById('filter-category').value;
+    const side = document.getElementById('filter-side').value;
+    const fillStatus = document.getElementById('filter-fill').value;
+    const slippageFilter = document.getElementById('filter-slippage').value;
+    const latencyFilter = document.getElementById('filter-latency').value;
+    const search = document.getElementById('filter-search').value.trim().toLowerCase();
+
     let url = `/api/trades?limit=${PAGE_SIZE}&offset=${tradesPage * PAGE_SIZE}`;
     if (wallet) url += `&wallet=${wallet}`;
-    if (category) url += `&category=${category}`; // Note: API doesn't support this yet, but we'll filter client-side for now or just show column
-
+    if (category) url += `&category=${category}`;
 
     const data = await api(url);
     if (!data) return;
 
-    // Filter status and category client-side
     let filtered = data;
     if (resolved === 'resolved') filtered = filtered.filter(t => t.resolved);
     if (resolved === 'unresolved') filtered = filtered.filter(t => !t.resolved);
     if (category) filtered = filtered.filter(t => t.category === category);
+    if (side) filtered = filtered.filter(t => t.side === side);
+    if (fillStatus === 'filled') filtered = filtered.filter(t => (t.paper_size || 0) > 0);
+    if (fillStatus === 'nofill') filtered = filtered.filter(t => (t.paper_size || 0) <= 0 || Boolean(t.no_fill_reason));
+
+    if (slippageFilter === 'adverse') filtered = filtered.filter(t => (t.slippage || 0) > 0);
+    if (slippageFilter === 'favorable') filtered = filtered.filter(t => (t.slippage || 0) < 0);
+    if (slippageFilter === 'high') filtered = filtered.filter(t => Math.abs(t.slippage || 0) >= 0.02);
+
+    if (latencyFilter === 'fast') filtered = filtered.filter(t => (t.total_delay_ms || 0) < 500);
+    if (latencyFilter === 'medium') filtered = filtered.filter(t => (t.total_delay_ms || 0) >= 500 && (t.total_delay_ms || 0) <= 2000);
+    if (latencyFilter === 'slow') filtered = filtered.filter(t => (t.total_delay_ms || 0) > 2000);
+
+    if (search) {
+        filtered = filtered.filter(t => {
+            const outcomes = Array.isArray(t.outcomes) ? t.outcomes : [];
+            const outcomeLabel = outcomes[t.outcome_idx] || '';
+            const predicted = predictedDirectionLabel(t.side, outcomes, t.outcome_idx);
+            const haystack = [
+                t.question || '',
+                t.group_item_title || '',
+                t.category || '',
+                outcomeLabel,
+                predicted,
+                t.wallet || '',
+                t.tx_hash || '',
+            ].join(' ').toLowerCase();
+            return haystack.includes(search);
+        });
+    }
 
     const tbody = document.getElementById('trades-tbody');
     tbody.innerHTML = filtered.map(t => {
         const outcomes = Array.isArray(t.outcomes) ? t.outcomes : [];
         const outcomeLabel = outcomes[t.outcome_idx] || '?';
+        const predictedLabel = predictedDirectionLabel(t.side, outcomes, t.outcome_idx);
         const question = t.question || '—';
         const groupItemTitle = (t.group_item_title || '').trim();
         const showGroupItem = groupItemTitle && groupItemTitle.toLowerCase() !== (t.category || '').toLowerCase();
@@ -198,6 +247,7 @@ async function loadTrades() {
             <td class="truncate" title="${question}">${marketLink}<br><small style="color:var(--text-muted)">${outcomeLabel}${showGroupItem ? ` • ${groupItemTitle}` : ''}</small></td>
             <td><span class="badge badge-resolved" style="background:var(--bg-card); border:1px solid var(--border)">${t.category || 'Other'}</span></td>
             <td>${sideBadge}</td>
+            <td><span class="badge" style="background:var(--bg-card); border:1px solid var(--border)">${predictedLabel}</span></td>
             <td class="mono">$${(t.target_price || 0).toFixed(4)}</td>
             <td class="mono">$${(t.paper_price || 0).toFixed(4)}</td>
             <td class="mono ${pnlClass(-(t.slippage || 0))}">${t.slippage != null ? t.slippage.toFixed(4) : '—'}</td>
@@ -210,7 +260,7 @@ async function loadTrades() {
 
     document.getElementById('trades-page-info').textContent = `Page ${tradesPage + 1}`;
     document.getElementById('trades-prev').disabled = tradesPage === 0;
-    document.getElementById('trades-next').disabled = data.length < PAGE_SIZE;
+    document.getElementById('trades-next').disabled = filtered.length < PAGE_SIZE;
 }
 
 function tradesNext() { tradesPage++; loadTrades(); }
@@ -219,14 +269,46 @@ function tradesPrev() { if (tradesPage > 0) { tradesPage--; loadTrades(); } }
 // ── Positions ─────────────────────────────────────────────────────
 async function loadPositions() {
     const filter = document.getElementById('position-filter').value;
+    const category = document.getElementById('position-category').value;
+    const pnlFilter = document.getElementById('position-pnl').value;
+    const search = document.getElementById('position-search').value.trim().toLowerCase();
+
     let url = '/api/positions';
     if (filter) url += `?resolved=${filter}`;
 
     const data = await api(url);
     if (!data) return;
 
+    let filtered = data;
+    if (category) filtered = filtered.filter(p => p.category === category);
+
+    if (pnlFilter) {
+        filtered = filtered.filter(p => {
+            const totalPnl = (p.realized_pnl || 0) + (p.unrealized_pnl || 0);
+            if (pnlFilter === 'winners') return totalPnl > 0.01;
+            if (pnlFilter === 'losers') return totalPnl < -0.01;
+            if (pnlFilter === 'flat') return Math.abs(totalPnl) <= 0.01;
+            return true;
+        });
+    }
+
+    if (search) {
+        filtered = filtered.filter(p => {
+            const outcomes = Array.isArray(p.outcomes) ? p.outcomes : [];
+            const outcomeLabel = outcomes[p.outcome_idx] || '';
+            const haystack = [
+                p.question || '',
+                p.group_item_title || '',
+                p.category || '',
+                outcomeLabel,
+                p.token_id || '',
+            ].join(' ').toLowerCase();
+            return haystack.includes(search);
+        });
+    }
+
     const tbody = document.getElementById('positions-tbody');
-    tbody.innerHTML = data.map(p => {
+    tbody.innerHTML = filtered.map(p => {
         const outcomes = Array.isArray(p.outcomes) ? p.outcomes : [];
         const outcomeLabel = outcomes[p.outcome_idx] || '?';
         const question = p.question || p.token_id.slice(0, 20) + '…';
