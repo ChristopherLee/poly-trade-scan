@@ -3,6 +3,7 @@ import argparse
 import asyncio
 import time
 import urllib.request
+import urllib.error
 import json
 import ssl
 from typing import Optional
@@ -315,43 +316,134 @@ def process_resolution(conn: db.sqlite3.Connection, market_meta: dict):
 
 
 def check_resolutions():
+    now = time.time()
+    success_cooldown_seconds = 4 * 60 * 60
+    error_backoff_seconds = [15 * 60, 30 * 60, 60 * 60, 2 * 60 * 60, 4 * 60 * 60]
+
     with db.transaction() as conn:
-        rows = conn.execute(
-            "SELECT DISTINCT m.token_id, m.condition_id FROM positions p "
+        due_rows = conn.execute(
+            "SELECT DISTINCT m.token_id, m.condition_id, m.next_resolution_check "
+            "FROM positions p "
             "JOIN markets m ON p.token_id = m.token_id "
-            "WHERE p.size > 0.0001"
+            "WHERE p.size > 0.0001 "
+            "AND m.resolved = 0 "
+            "AND (m.next_resolution_check IS NULL OR m.next_resolution_check <= ?)"
+            , (now,)
         ).fetchall()
+
+        skipped_rows = conn.execute(
+            "SELECT DISTINCT m.token_id, m.condition_id, m.next_resolution_check "
+            "FROM positions p "
+            "JOIN markets m ON p.token_id = m.token_id "
+            "WHERE p.size > 0.0001 "
+            "AND m.resolved = 0 "
+            "AND m.next_resolution_check IS NOT NULL "
+            "AND m.next_resolution_check > ?"
+            , (now,)
+        ).fetchall()
+
+        for row in skipped_rows:
+            token_or_condition = row["condition_id"] or row["token_id"]
+            next_check = datetime.fromtimestamp(row["next_resolution_check"], tz=timezone.utc).isoformat()
+            log.info(f"Skipping Gamma check for {token_or_condition}: cooldown active until {next_check}")
         
-        if not rows:
+        if not due_rows:
             return
 
-        log.info(f"Checking resolution for {len(rows)} open positions via API...")
+        log.info(f"Checking resolution for {len(due_rows)} open positions via API...")
         processed_conditions = set()
 
-        for row in rows:
+        for row in due_rows:
             tid = row["token_id"]
             cid = row["condition_id"]
-            
-            if cid and cid in processed_conditions:
+
+            dedupe_key = cid or tid
+            if dedupe_key in processed_conditions:
                 continue
 
+            processed_conditions.add(dedupe_key)
+
+            market_token_ids = [
+                r["token_id"]
+                for r in conn.execute(
+                    "SELECT token_id FROM markets WHERE condition_id = ?",
+                    (cid,),
+                ).fetchall()
+            ] if cid else [tid]
+
+            def _update_schedule(last_check: float, next_check: float, failures: int):
+                placeholders = ",".join("?" for _ in market_token_ids)
+                conn.execute(
+                    f"UPDATE markets SET last_resolution_check=?, next_resolution_check=?, resolution_check_failures=? "
+                    f"WHERE token_id IN ({placeholders})",
+                    (last_check, next_check, failures, *market_token_ids),
+                )
+
             url = f"https://gamma-api.polymarket.com/markets?clob_token_ids={tid}"
-            data = fetch_json(url)
-            if not data:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            data = None
+            response_error = None
+            status_code = None
+            try:
+                response = urllib.request.urlopen(req, context=ssl_context)
+                status_code = getattr(response, "status", None)
+                data = json.loads(response.read())
+            except urllib.error.HTTPError as e:
+                status_code = e.code
+                response_error = e
+            except Exception as e:
+                response_error = e
+
+            current_failures = conn.execute(
+                "SELECT COALESCE(MAX(resolution_check_failures), 0) AS failures "
+                "FROM markets WHERE token_id IN ({})".format(
+                    ",".join("?" for _ in market_token_ids)
+                ),
+                market_token_ids,
+            ).fetchone()["failures"]
+
+            if response_error:
+                next_failures = current_failures + 1
+                delay = error_backoff_seconds[min(next_failures - 1, len(error_backoff_seconds) - 1)]
+                next_check = now + delay
+                _update_schedule(now, next_check, next_failures)
+                next_check_iso = datetime.fromtimestamp(next_check, tz=timezone.utc).isoformat()
+                log.warning(
+                    f"Gamma check failed for {dedupe_key} (status={status_code}, failures={next_failures}). "
+                    f"Next check at {next_check_iso}. Error: {response_error}"
+                )
                 continue
-                
+
+            if not data:
+                next_check = now + success_cooldown_seconds
+                _update_schedule(now, next_check, 0)
+                next_check_iso = datetime.fromtimestamp(next_check, tz=timezone.utc).isoformat()
+                log.info(f"No Gamma data for {dedupe_key}; next check scheduled at {next_check_iso}")
+                continue
+
+            found_resolution = False
             for m in data:
                 clob_ids = json.loads(m.get("clobTokenIds", "[]"))
                 if tid in clob_ids:
                     if m.get("resolved") or m.get("closed"):
                         payouts = m.get("resolver_raw_payouts")
                         if payouts:
+                            found_resolution = True
                             process_resolution(conn, {
                                 "condition_id": m.get("conditionId"),
                                 "clob_token_ids": clob_ids,
                                 "resolver_raw_payouts": payouts
                             })
-                            processed_conditions.add(cid)
+                            break
+
+            if found_resolution:
+                log.info(f"Resolved market {dedupe_key}; cleared resolution schedule")
+                continue
+
+            next_check = now + success_cooldown_seconds
+            _update_schedule(now, next_check, 0)
+            next_check_iso = datetime.fromtimestamp(next_check, tz=timezone.utc).isoformat()
+            log.info(f"Market {dedupe_key} unresolved; next Gamma check at {next_check_iso}")
 
 
 def check_missing_metadata():
