@@ -70,6 +70,9 @@ def init_db(db_path: Optional[str] = None) -> None:
         resolved        INTEGER DEFAULT 0,
         winning_outcome INTEGER,        -- 0 or 1
         payout_value    REAL,           -- 1.0 or 0.0 for this token
+        last_resolution_check REAL,     -- epoch when Gamma was last queried
+        next_resolution_check REAL,     -- epoch when Gamma should be queried next
+        resolution_check_failures INTEGER DEFAULT 0,
         resolved_at     REAL,           -- epoch
         first_seen      REAL            -- epoch
     );
@@ -178,6 +181,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "tags" not in market_cols:
         conn.execute("ALTER TABLE markets ADD COLUMN tags TEXT")
         conn.commit()
+    if "last_resolution_check" not in market_cols:
+        conn.execute("ALTER TABLE markets ADD COLUMN last_resolution_check REAL")
+        conn.commit()
+    if "next_resolution_check" not in market_cols:
+        conn.execute("ALTER TABLE markets ADD COLUMN next_resolution_check REAL")
+        conn.commit()
+    if "resolution_check_failures" not in market_cols:
+        conn.execute("ALTER TABLE markets ADD COLUMN resolution_check_failures INTEGER DEFAULT 0")
+        conn.commit()
     if "group_item_title" not in market_cols:
         conn.execute("ALTER TABLE markets ADD COLUMN group_item_title TEXT")
         conn.commit()
@@ -255,7 +267,14 @@ def upsert_market(conn: sqlite3.Connection, token_id: str,
 def mark_resolved(conn: sqlite3.Connection, token_id: str,
                   winning_outcome: int, payout_value: float) -> None:
     conn.execute("""
-        UPDATE markets SET resolved = 1, winning_outcome = ?, payout_value = ?, resolved_at = ?
+        UPDATE markets
+        SET resolved = 1,
+            winning_outcome = ?,
+            payout_value = ?,
+            resolved_at = ?,
+            last_resolution_check = NULL,
+            next_resolution_check = NULL,
+            resolution_check_failures = 0
         WHERE token_id = ?
     """, (winning_outcome, payout_value, time.time(), token_id))
     conn.commit()
