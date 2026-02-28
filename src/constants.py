@@ -23,3 +23,6 @@ DEFAULT_WALLETS_FILE = CONFIG_DIR / "wallets.txt"
 RPC_MAX_RETRIES = 3
 RPC_RETRY_DELAY_SECONDS = 1.0
 RPC_TIMEOUT_SECONDS = 2
+
+# Polymarket CLOB
+POLYMARKET_CLOB_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/"

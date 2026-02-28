@@ -1,0 +1,2182 @@
+================================================================================
+LIVE PAPER TRADE REPORT (Size: $10.0)
+================================================================================
+
+[SELL] Detected target trade from 0xc8ab97a9089a9ff7e6ef0688e6e591a066946418 for block 83568787
+Target Wallet Fill: ~29.80 shares @ ~$0.7300
+Orderbook Latency: 101.66 ms
+Paper Bot Fill: 14.71 shares @ $0.6800 avg price (Size: $10.0)
+Slippage incurred: $0.0500 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $0.00
+Time Slippage Analysis:
+  - Block Time to Detection: -15579.84 ms
+  - Detection to Paper Fill: 126.08 ms
+  - Total Real-World Slip: -15453.75 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83568788
+Target Wallet Fill: ~164.00 shares @ ~$0.0050
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83568788
+Target Wallet Fill: ~164.00 shares @ ~$0.0050
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83568788
+Target Wallet Fill: ~164.00 shares @ ~$0.0050
+[BUY] Detected target trade from 0x15ceffed7bf820cd2d90f90ea24ae9909f5cd5fa for block 83568788
+Target Wallet Fill: ~1338.00 shares @ ~$0.9990
+[BUY] Detected target trade from 0x15ceffed7bf820cd2d90f90ea24ae9909f5cd5fa for block 83568788
+Target Wallet Fill: ~1338.00 shares @ ~$0.9990
+[BUY] Detected target trade from 0x15ceffed7bf820cd2d90f90ea24ae9909f5cd5fa for block 83568788
+Target Wallet Fill: ~2552.00 shares @ ~$0.9990
+Orderbook Latency: 116.45 ms
+Paper Bot Fill: 121.26 shares @ $0.0825 avg price (Size: $10.0)
+Slippage incurred: $0.0775 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $0.00
+Time Slippage Analysis:
+  - Block Time to Detection: -16718.18 ms
+  - Detection to Paper Fill: 157.92 ms
+  - Total Real-World Slip: -16560.25 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 232.15 ms
+Paper Bot Fill: 121.26 shares @ $0.0825 avg price (Size: $10.0)
+Slippage incurred: $0.0775 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $0.00
+Time Slippage Analysis:
+  - Block Time to Detection: -16714.18 ms
+  - Detection to Paper Fill: 252.89 ms
+  - Total Real-World Slip: -16461.28 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 219.96 ms
+Paper Bot Fill: 121.26 shares @ $0.0825 avg price (Size: $10.0)
+Slippage incurred: $0.0775 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $0.00
+Time Slippage Analysis:
+  - Block Time to Detection: -16697.03 ms
+  - Detection to Paper Fill: 240.75 ms
+  - Total Real-World Slip: -16456.28 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 218.86 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -16679.24 ms
+  - Detection to Paper Fill: 232.47 ms
+  - Total Real-World Slip: -16446.77 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 202.11 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -16646.88 ms
+  - Detection to Paper Fill: 203.11 ms
+  - Total Real-World Slip: -16443.77 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 185.11 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -16632.87 ms
+  - Detection to Paper Fill: 192.11 ms
+  - Total Real-World Slip: -16440.77 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568796
+Target Wallet Fill: ~19.00 shares @ ~$0.6600
+Orderbook Latency: 102.14 ms
+Paper Bot Fill: 13.59 shares @ $0.7356 avg price (Size: $10.0)
+Slippage incurred: $0.0756 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $237.60
+Time Slippage Analysis:
+  - Block Time to Detection: -15226.02 ms
+  - Detection to Paper Fill: 108.23 ms
+  - Total Real-World Slip: -15117.79 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568797
+Target Wallet Fill: ~11.10 shares @ ~$0.2800
+Orderbook Latency: 101.99 ms
+Paper Bot Fill: 30.91 shares @ $0.3235 avg price (Size: $10.0)
+Slippage incurred: $0.0435 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $82.10
+Time Slippage Analysis:
+  - Block Time to Detection: -16400.33 ms
+  - Detection to Paper Fill: 108.14 ms
+  - Total Real-World Slip: -16292.18 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568801
+Target Wallet Fill: ~26.10 shares @ ~$0.9810
+Orderbook Latency: 112.73 ms
+Paper Bot Fill: 10.07 shares @ $0.9930 avg price (Size: $10.0)
+Slippage incurred: $0.0120 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $355.44
+Time Slippage Analysis:
+  - Block Time to Detection: -16859.52 ms
+  - Detection to Paper Fill: 117.73 ms
+  - Total Real-World Slip: -16741.79 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xc8ab97a9089a9ff7e6ef0688e6e591a066946418 for block 83568803
+Target Wallet Fill: ~10000.00 shares @ ~$0.9960
+Orderbook Latency: 103.56 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -15781.26 ms
+  - Detection to Paper Fill: 107.46 ms
+  - Total Real-World Slip: -15673.81 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568806
+Target Wallet Fill: ~36.00 shares @ ~$0.9620
+Orderbook Latency: 104.41 ms
+Paper Bot Fill: 10.48 shares @ $0.9541 avg price (Size: $10.0)
+Slippage incurred: $-0.0079 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $339.14
+Time Slippage Analysis:
+  - Block Time to Detection: -17314.17 ms
+  - Detection to Paper Fill: 109.38 ms
+  - Total Real-World Slip: -17204.78 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568808
+Target Wallet Fill: ~110.00 shares @ ~$0.0200
+Orderbook Latency: 121.59 ms
+Paper Bot Fill: 402.54 shares @ $0.0248 avg price (Size: $10.0)
+Slippage incurred: $0.0048 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $-59.35
+Time Slippage Analysis:
+  - Block Time to Detection: -17096.20 ms
+  - Detection to Paper Fill: 129.04 ms
+  - Total Real-World Slip: -16967.16 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568814
+Target Wallet Fill: ~12.00 shares @ ~$0.0500
+Orderbook Latency: 103.83 ms
+Paper Bot Fill: 86.43 shares @ $0.1157 avg price (Size: $10.0)
+Slippage incurred: $0.0657 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $16.19
+Time Slippage Analysis:
+  - Block Time to Detection: -17175.90 ms
+  - Detection to Paper Fill: 113.54 ms
+  - Total Real-World Slip: -17062.37 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568820
+Target Wallet Fill: ~25.50 shares @ ~$0.9830
+[SELL] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568820
+Target Wallet Fill: ~32.00 shares @ ~$0.3300
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568820
+Target Wallet Fill: ~22.70 shares @ ~$0.1000
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568820
+Target Wallet Fill: ~45.00 shares @ ~$0.2300
+Orderbook Latency: 105.58 ms
+Paper Bot Fill: 10.10 shares @ $0.9900 avg price (Size: $10.0)
+Slippage incurred: $0.0070 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $818.63
+Time Slippage Analysis:
+  - Block Time to Detection: -15821.57 ms
+  - Detection to Paper Fill: 127.05 ms
+  - Total Real-World Slip: -15694.52 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 118.95 ms
+Paper Bot Fill: 33.93 shares @ $0.2948 avg price (Size: $10.0)
+Slippage incurred: $0.0352 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $173.51
+Time Slippage Analysis:
+  - Block Time to Detection: -15820.57 ms
+  - Detection to Paper Fill: 151.64 ms
+  - Total Real-World Slip: -15668.93 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 247.86 ms
+Paper Bot Fill: 138.36 shares @ $0.0723 avg price (Size: $10.0)
+Slippage incurred: $0.0277 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $-32.93
+Time Slippage Analysis:
+  - Block Time to Detection: -15811.46 ms
+  - Detection to Paper Fill: 258.67 ms
+  - Total Real-World Slip: -15552.79 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 246.24 ms
+Paper Bot Fill: 41.67 shares @ $0.2400 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $122.70
+Time Slippage Analysis:
+  - Block Time to Detection: -15805.65 ms
+  - Detection to Paper Fill: 256.91 ms
+  - Total Real-World Slip: -15548.74 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568821
+Target Wallet Fill: ~22.70 shares @ ~$0.1000
+[SELL] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568821
+Target Wallet Fill: ~32.00 shares @ ~$0.3300
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568821
+Target Wallet Fill: ~36.00 shares @ ~$0.9290
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568821
+Target Wallet Fill: ~45.00 shares @ ~$0.2120
+Orderbook Latency: 109.10 ms
+Paper Bot Fill: 33.93 shares @ $0.2948 avg price (Size: $10.0)
+Slippage incurred: $0.0352 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $175.79
+Time Slippage Analysis:
+  - Block Time to Detection: -17055.75 ms
+  - Detection to Paper Fill: 114.61 ms
+  - Total Real-World Slip: -16941.15 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 116.61 ms
+Paper Bot Fill: 139.39 shares @ $0.0717 avg price (Size: $10.0)
+Slippage incurred: $0.0283 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $-40.44
+Time Slippage Analysis:
+  - Block Time to Detection: -17056.45 ms
+  - Detection to Paper Fill: 119.20 ms
+  - Total Real-World Slip: -16937.25 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 117.99 ms
+Paper Bot Fill: 41.28 shares @ $0.2422 avg price (Size: $10.0)
+Slippage incurred: $0.0302 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $124.86
+Time Slippage Analysis:
+  - Block Time to Detection: -17054.25 ms
+  - Detection to Paper Fill: 121.02 ms
+  - Total Real-World Slip: -16933.22 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 130.28 ms
+Paper Bot Fill: 10.99 shares @ $0.9100 avg price (Size: $10.0)
+Slippage incurred: $0.0190 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $799.88
+Time Slippage Analysis:
+  - Block Time to Detection: -17055.24 ms
+  - Detection to Paper Fill: 133.04 ms
+  - Total Real-World Slip: -16922.20 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568824
+Target Wallet Fill: ~36.00 shares @ ~$0.9290
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568824
+Target Wallet Fill: ~45.00 shares @ ~$0.2120
+Orderbook Latency: 99.86 ms
+Paper Bot Fill: 10.98 shares @ $0.9110 avg price (Size: $10.0)
+Slippage incurred: $0.0180 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $800.89
+Time Slippage Analysis:
+  - Block Time to Detection: -16401.87 ms
+  - Detection to Paper Fill: 105.38 ms
+  - Total Real-World Slip: -16296.49 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 105.38 ms
+Paper Bot Fill: 41.54 shares @ $0.2407 avg price (Size: $10.0)
+Slippage incurred: $0.0287 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $123.36
+Time Slippage Analysis:
+  - Block Time to Detection: -16400.88 ms
+  - Detection to Paper Fill: 108.38 ms
+  - Total Real-World Slip: -16292.49 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568827
+Target Wallet Fill: ~45.00 shares @ ~$0.2200
+Orderbook Latency: 108.91 ms
+Paper Bot Fill: 47.62 shares @ $0.2100 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $91.00
+Time Slippage Analysis:
+  - Block Time to Detection: -16318.23 ms
+  - Detection to Paper Fill: 113.60 ms
+  - Total Real-World Slip: -16204.63 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568833
+Target Wallet Fill: ~25.00 shares @ ~$0.8800
+Orderbook Latency: 109.55 ms
+Paper Bot Fill: 10.75 shares @ $0.9300 avg price (Size: $10.0)
+Slippage incurred: $0.0500 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $848.73
+Time Slippage Analysis:
+  - Block Time to Detection: -16368.49 ms
+  - Detection to Paper Fill: 118.69 ms
+  - Total Real-World Slip: -16249.80 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568834
+Target Wallet Fill: ~36.00 shares @ ~$0.0710
+Orderbook Latency: 112.56 ms
+Paper Bot Fill: 114.94 shares @ $0.0870 avg price (Size: $10.0)
+Slippage incurred: $0.0160 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $-47.51
+Time Slippage Analysis:
+  - Block Time to Detection: -17220.02 ms
+  - Detection to Paper Fill: 126.14 ms
+  - Total Real-World Slip: -17093.88 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568837
+Target Wallet Fill: ~232.00 shares @ ~$0.0110
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568837
+Target Wallet Fill: ~13.90 shares @ ~$0.0620
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568837
+Target Wallet Fill: ~32.00 shares @ ~$0.2000
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568837
+Target Wallet Fill: ~55.00 shares @ ~$0.2900
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568837
+Target Wallet Fill: ~25.00 shares @ ~$0.8700
+Orderbook Latency: 100.84 ms
+Paper Bot Fill: 101.25 shares @ $0.0988 avg price (Size: $10.0)
+Slippage incurred: $0.0368 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $-33.65
+Time Slippage Analysis:
+  - Block Time to Detection: -17261.15 ms
+  - Detection to Paper Fill: 107.70 ms
+  - Total Real-World Slip: -17153.45 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 109.70 ms
+Paper Bot Fill: 608.68 shares @ $0.0164 avg price (Size: $10.0)
+Slippage incurred: $0.0054 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $-138.98
+Time Slippage Analysis:
+  - Block Time to Detection: -17262.15 ms
+  - Detection to Paper Fill: 113.56 ms
+  - Total Real-World Slip: -17148.59 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 112.53 ms
+Paper Bot Fill: 40.67 shares @ $0.2459 avg price (Size: $10.0)
+Slippage incurred: $0.0459 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $294.21
+Time Slippage Analysis:
+  - Block Time to Detection: -17260.15 ms
+  - Detection to Paper Fill: 115.53 ms
+  - Total Real-World Slip: -17144.62 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 115.92 ms
+Paper Bot Fill: 28.85 shares @ $0.3466 avg price (Size: $10.0)
+Slippage incurred: $0.0566 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $488.50
+Time Slippage Analysis:
+  - Block Time to Detection: -17259.15 ms
+  - Detection to Paper Fill: 129.49 ms
+  - Total Real-World Slip: -17129.66 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 129.94 ms
+Paper Bot Fill: 11.63 shares @ $0.8600 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $1493.49
+Time Slippage Analysis:
+  - Block Time to Detection: -17258.55 ms
+  - Detection to Paper Fill: 132.99 ms
+  - Total Real-World Slip: -17125.56 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568839
+Target Wallet Fill: ~26.90 shares @ ~$0.0710
+Orderbook Latency: 106.72 ms
+Paper Bot Fill: 115.22 shares @ $0.0868 avg price (Size: $10.0)
+Slippage incurred: $0.0158 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $-20.10
+Time Slippage Analysis:
+  - Block Time to Detection: -16115.41 ms
+  - Detection to Paper Fill: 114.45 ms
+  - Total Real-World Slip: -16000.95 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568844
+Target Wallet Fill: ~7.41 shares @ ~$0.1500
+Orderbook Latency: 99.67 ms
+Paper Bot Fill: 32.27 shares @ $0.3099 avg price (Size: $10.0)
+Slippage incurred: $0.1599 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $442.36
+Time Slippage Analysis:
+  - Block Time to Detection: -16294.74 ms
+  - Detection to Paper Fill: 106.67 ms
+  - Total Real-World Slip: -16188.07 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83568847
+Target Wallet Fill: ~250.00 shares @ ~$0.0020
+Orderbook Latency: 115.58 ms
+Paper Bot Fill: 1585.65 shares @ $0.0063 avg price (Size: $10.0)
+Slippage incurred: $0.0043 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $-196.72
+Time Slippage Analysis:
+  - Block Time to Detection: -17041.67 ms
+  - Detection to Paper Fill: 126.38 ms
+  - Total Real-World Slip: -16915.29 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xc8ab97a9089a9ff7e6ef0688e6e591a066946418 for block 83568854
+Target Wallet Fill: ~10000.00 shares @ ~$0.9960
+Orderbook Latency: 99.48 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -16171.73 ms
+  - Detection to Paper Fill: 104.51 ms
+  - Total Real-World Slip: -16067.22 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568860
+Target Wallet Fill: ~27.25 shares @ ~$0.8800
+Orderbook Latency: 111.95 ms
+Paper Bot Fill: 10.75 shares @ $0.9300 avg price (Size: $10.0)
+Slippage incurred: $0.0500 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $3212.34
+Time Slippage Analysis:
+  - Block Time to Detection: -17105.19 ms
+  - Detection to Paper Fill: 120.38 ms
+  - Total Real-World Slip: -16984.81 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568861
+Target Wallet Fill: ~13.90 shares @ ~$0.0620
+Orderbook Latency: 136.21 ms
+Paper Bot Fill: 101.38 shares @ $0.0986 avg price (Size: $10.0)
+Slippage incurred: $0.0366 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $135.11
+Time Slippage Analysis:
+  - Block Time to Detection: -16693.97 ms
+  - Detection to Paper Fill: 145.03 ms
+  - Total Real-World Slip: -16548.94 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568866
+Target Wallet Fill: ~6.50 shares @ ~$0.7400
+Orderbook Latency: 98.38 ms
+Paper Bot Fill: 12.92 shares @ $0.7740 avg price (Size: $10.0)
+Slippage incurred: $0.0340 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $2703.33
+Time Slippage Analysis:
+  - Block Time to Detection: -17381.81 ms
+  - Detection to Paper Fill: 104.63 ms
+  - Total Real-World Slip: -17277.17 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568867
+Target Wallet Fill: ~21.30 shares @ ~$0.9380
+Orderbook Latency: 100.89 ms
+Paper Bot Fill: 10.81 shares @ $0.9250 avg price (Size: $10.0)
+Slippage incurred: $0.0130 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $3279.55
+Time Slippage Analysis:
+  - Block Time to Detection: -17295.83 ms
+  - Detection to Paper Fill: 118.64 ms
+  - Total Real-World Slip: -17177.19 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568868
+Target Wallet Fill: ~45.00 shares @ ~$0.2300
+Orderbook Latency: 111.81 ms
+Paper Bot Fill: 50.09 shares @ $0.1996 avg price (Size: $10.0)
+Slippage incurred: $0.0304 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $511.74
+Time Slippage Analysis:
+  - Block Time to Detection: -16567.35 ms
+  - Detection to Paper Fill: 119.25 ms
+  - Total Real-World Slip: -16448.10 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568878
+Target Wallet Fill: ~19.00 shares @ ~$0.9600
+Orderbook Latency: 110.80 ms
+Paper Bot Fill: 10.53 shares @ $0.9500 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $3374.95
+Time Slippage Analysis:
+  - Block Time to Detection: -16035.94 ms
+  - Detection to Paper Fill: 116.82 ms
+  - Total Real-World Slip: -15919.12 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83568881
+Target Wallet Fill: ~250.00 shares @ ~$0.0020
+Orderbook Latency: 117.72 ms
+Paper Bot Fill: 1591.87 shares @ $0.0063 avg price (Size: $10.0)
+Slippage incurred: $0.0043 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $-226.03
+Time Slippage Analysis:
+  - Block Time to Detection: -16230.17 ms
+  - Detection to Paper Fill: 128.69 ms
+  - Total Real-World Slip: -16101.48 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568883
+Target Wallet Fill: ~30.00 shares @ ~$0.2300
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568883
+Target Wallet Fill: ~9.70 shares @ ~$0.2800
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568883
+Target Wallet Fill: ~30.00 shares @ ~$0.2300
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568883
+Target Wallet Fill: ~9.70 shares @ ~$0.2800
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568883
+Target Wallet Fill: ~21.50 shares @ ~$0.9100
+Orderbook Latency: 104.37 ms
+Paper Bot Fill: 32.26 shares @ $0.3100 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $1416.36
+Time Slippage Analysis:
+  - Block Time to Detection: -15351.23 ms
+  - Detection to Paper Fill: 111.59 ms
+  - Total Real-World Slip: -15239.64 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 114.33 ms
+Paper Bot Fill: 36.29 shares @ $0.2756 avg price (Size: $10.0)
+Slippage incurred: $0.0456 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $1229.18
+Time Slippage Analysis:
+  - Block Time to Detection: -15356.26 ms
+  - Detection to Paper Fill: 120.36 ms
+  - Total Real-World Slip: -15235.90 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 114.33 ms
+Paper Bot Fill: 11.36 shares @ $0.8800 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $4539.01
+Time Slippage Analysis:
+  - Block Time to Detection: -15348.23 ms
+  - Detection to Paper Fill: 116.33 ms
+  - Total Real-World Slip: -15231.90 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 124.99 ms
+Paper Bot Fill: 36.29 shares @ $0.2756 avg price (Size: $10.0)
+Slippage incurred: $0.0456 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $1229.18
+Time Slippage Analysis:
+  - Block Time to Detection: -15350.23 ms
+  - Detection to Paper Fill: 136.91 ms
+  - Total Real-World Slip: -15213.32 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 139.65 ms
+Paper Bot Fill: 32.26 shares @ $0.3100 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $1418.86
+Time Slippage Analysis:
+  - Block Time to Detection: -15349.23 ms
+  - Detection to Paper Fill: 142.64 ms
+  - Total Real-World Slip: -15206.58 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568884
+Target Wallet Fill: ~11.70 shares @ ~$0.5820
+Orderbook Latency: 113.39 ms
+Paper Bot Fill: 17.45 shares @ $0.5730 avg price (Size: $10.0)
+Slippage incurred: $0.0090 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $2877.11
+Time Slippage Analysis:
+  - Block Time to Detection: -13420.86 ms
+  - Detection to Paper Fill: 125.10 ms
+  - Total Real-World Slip: -13295.76 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568885
+Target Wallet Fill: ~11.70 shares @ ~$0.5820
+Orderbook Latency: 110.85 ms
+Paper Bot Fill: 17.45 shares @ $0.5730 avg price (Size: $10.0)
+Slippage incurred: $0.0090 per share
+Running Realized PnL: $0.00
+Running Unrealized PnL: $2877.11
+Time Slippage Analysis:
+  - Block Time to Detection: -14483.84 ms
+  - Detection to Paper Fill: 121.55 ms
+  - Total Real-World Slip: -14362.29 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568888
+Target Wallet Fill: ~45.00 shares @ ~$0.2300
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568888
+Target Wallet Fill: ~20.00 shares @ ~$0.2300
+Orderbook Latency: 99.22 ms
+Paper Bot Fill: 45.45 shares @ $0.2200 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $920.67
+Time Slippage Analysis:
+  - Block Time to Detection: -9636.75 ms
+  - Detection to Paper Fill: 106.76 ms
+  - Total Real-World Slip: -9529.99 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 111.73 ms
+Paper Bot Fill: 31.18 shares @ $0.3208 avg price (Size: $10.0)
+Slippage incurred: $0.0908 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $1475.12
+Time Slippage Analysis:
+  - Block Time to Detection: -9637.75 ms
+  - Detection to Paper Fill: 120.64 ms
+  - Total Real-World Slip: -9517.11 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xc8ab97a9089a9ff7e6ef0688e6e591a066946418 for block 83568890
+Target Wallet Fill: ~10000.00 shares @ ~$0.9960
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568890
+Target Wallet Fill: ~21.50 shares @ ~$0.9100
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568890
+Target Wallet Fill: ~25.90 shares @ ~$0.2400
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568890
+Target Wallet Fill: ~5.70 shares @ ~$0.2800
+Orderbook Latency: 100.58 ms
+Paper Bot Fill: 36.29 shares @ $0.2756 avg price (Size: $10.0)
+Slippage incurred: $0.0356 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $1225.17
+Time Slippage Analysis:
+  - Block Time to Detection: -12602.57 ms
+  - Detection to Paper Fill: 110.85 ms
+  - Total Real-World Slip: -12491.72 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 112.55 ms
+Paper Bot Fill: 11.36 shares @ $0.8800 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $4592.03
+Time Slippage Analysis:
+  - Block Time to Detection: -12603.57 ms
+  - Detection to Paper Fill: 115.55 ms
+  - Total Real-World Slip: -12488.02 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 119.55 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -12604.57 ms
+  - Detection to Paper Fill: 119.55 ms
+  - Total Real-World Slip: -12485.02 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 136.76 ms
+Paper Bot Fill: 32.26 shares @ $0.3100 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $1416.85
+Time Slippage Analysis:
+  - Block Time to Detection: -12601.52 ms
+  - Detection to Paper Fill: 143.95 ms
+  - Total Real-World Slip: -12457.56 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568893
+Target Wallet Fill: ~45.00 shares @ ~$0.1970
+Orderbook Latency: 101.08 ms
+Paper Bot Fill: 45.05 shares @ $0.2220 avg price (Size: $10.0)
+Slippage incurred: $0.0250 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $923.81
+Time Slippage Analysis:
+  - Block Time to Detection: -12099.34 ms
+  - Detection to Paper Fill: 107.68 ms
+  - Total Real-World Slip: -11991.67 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568894
+Target Wallet Fill: ~27.20 shares @ ~$0.5400
+Orderbook Latency: 98.87 ms
+Paper Bot Fill: 20.00 shares @ $0.5000 avg price (Size: $10.0)
+Slippage incurred: $0.0400 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $2493.90
+Time Slippage Analysis:
+  - Block Time to Detection: -11341.29 ms
+  - Detection to Paper Fill: 110.88 ms
+  - Total Real-World Slip: -11230.42 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568896
+Target Wallet Fill: ~30.00 shares @ ~$0.2200
+Orderbook Latency: 105.41 ms
+Paper Bot Fill: 49.97 shares @ $0.2001 avg price (Size: $10.0)
+Slippage incurred: $0.0199 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $800.30
+Time Slippage Analysis:
+  - Block Time to Detection: -14107.10 ms
+  - Detection to Paper Fill: 111.51 ms
+  - Total Real-World Slip: -13995.59 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568901
+Target Wallet Fill: ~9.53 shares @ ~$0.2300
+Orderbook Latency: 111.84 ms
+Paper Bot Fill: 35.71 shares @ $0.2800 avg price (Size: $10.0)
+Slippage incurred: $0.0500 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $1251.38
+Time Slippage Analysis:
+  - Block Time to Detection: -15373.38 ms
+  - Detection to Paper Fill: 120.37 ms
+  - Total Real-World Slip: -15253.01 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568903
+Target Wallet Fill: ~39.60 shares @ ~$0.6000
+Orderbook Latency: 105.83 ms
+Paper Bot Fill: 16.39 shares @ $0.6100 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $3126.94
+Time Slippage Analysis:
+  - Block Time to Detection: -15656.07 ms
+  - Detection to Paper Fill: 122.26 ms
+  - Total Real-World Slip: -15533.81 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568904
+Target Wallet Fill: ~9.53 shares @ ~$0.2300
+Orderbook Latency: 102.17 ms
+Paper Bot Fill: 38.46 shares @ $0.2600 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $1131.97
+Time Slippage Analysis:
+  - Block Time to Detection: -16278.82 ms
+  - Detection to Paper Fill: 114.44 ms
+  - Total Real-World Slip: -16164.38 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83568909
+Target Wallet Fill: ~95.00 shares @ ~$0.0210
+Orderbook Latency: 117.43 ms
+Paper Bot Fill: 14.20 shares @ $0.7042 avg price (Size: $10.0)
+Slippage incurred: $0.6832 per share
+Running Realized PnL: $-0.91
+Running Unrealized PnL: $3680.87
+Time Slippage Analysis:
+  - Block Time to Detection: -16466.29 ms
+  - Detection to Paper Fill: 128.15 ms
+  - Total Real-World Slip: -16338.14 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568911
+Target Wallet Fill: ~28.50 shares @ ~$0.2400
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568911
+Target Wallet Fill: ~24.90 shares @ ~$0.2400
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568911
+Target Wallet Fill: ~28.50 shares @ ~$0.2400
+Orderbook Latency: 94.92 ms
+Paper Bot Fill: 45.45 shares @ $0.2200 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-3.16
+Running Unrealized PnL: $897.82
+Time Slippage Analysis:
+  - Block Time to Detection: -16246.54 ms
+  - Detection to Paper Fill: 106.09 ms
+  - Total Real-World Slip: -16140.45 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 107.04 ms
+Paper Bot Fill: 34.48 shares @ $0.2900 avg price (Size: $10.0)
+Slippage incurred: $0.0500 per share
+Running Realized PnL: $-3.16
+Running Unrealized PnL: $1297.32
+Time Slippage Analysis:
+  - Block Time to Detection: -16245.54 ms
+  - Detection to Paper Fill: 120.56 ms
+  - Total Real-World Slip: -16124.98 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 133.07 ms
+Paper Bot Fill: 45.45 shares @ $0.2200 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-5.42
+Running Unrealized PnL: $896.83
+Time Slippage Analysis:
+  - Block Time to Detection: -16244.54 ms
+  - Detection to Paper Fill: 161.07 ms
+  - Total Real-World Slip: -16083.48 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xc8ab97a9089a9ff7e6ef0688e6e591a066946418 for block 83568912
+Target Wallet Fill: ~2000.00 shares @ ~$0.8000
+Orderbook Latency: 108.70 ms
+Paper Bot Fill: 12.35 shares @ $0.8100 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-5.42
+Running Unrealized PnL: $4267.43
+Time Slippage Analysis:
+  - Block Time to Detection: -16328.01 ms
+  - Detection to Paper Fill: 122.30 ms
+  - Total Real-World Slip: -16205.72 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568916
+Target Wallet Fill: ~36.00 shares @ ~$0.9690
+Orderbook Latency: 118.14 ms
+Paper Bot Fill: 10.63 shares @ $0.9410 avg price (Size: $10.0)
+Slippage incurred: $0.0280 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $5017.57
+Time Slippage Analysis:
+  - Block Time to Detection: -14141.48 ms
+  - Detection to Paper Fill: 130.10 ms
+  - Total Real-World Slip: -14011.37 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83568918
+Target Wallet Fill: ~15.00 shares @ ~$0.0100
+Orderbook Latency: 112.42 ms
+Paper Bot Fill: 8632.84 shares @ $0.0012 avg price (Size: $10.0)
+Slippage incurred: $0.0088 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $-353.38
+Time Slippage Analysis:
+  - Block Time to Detection: -14547.42 ms
+  - Detection to Paper Fill: 119.58 ms
+  - Total Real-World Slip: -14427.84 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xc8ab97a9089a9ff7e6ef0688e6e591a066946418 for block 83568919
+Target Wallet Fill: ~198.92 shares @ ~$0.9100
+Orderbook Latency: 121.39 ms
+Paper Bot Fill: 11.36 shares @ $0.8800 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $4668.97
+Time Slippage Analysis:
+  - Block Time to Detection: -16193.19 ms
+  - Detection to Paper Fill: 128.88 ms
+  - Total Real-World Slip: -16064.31 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568920
+Target Wallet Fill: ~45.00 shares @ ~$0.2200
+Orderbook Latency: 100.88 ms
+Paper Bot Fill: 45.45 shares @ $0.2200 avg price (Size: $10.0)
+Slippage incurred: $0.0000 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $897.24
+Time Slippage Analysis:
+  - Block Time to Detection: -16799.21 ms
+  - Detection to Paper Fill: 107.88 ms
+  - Total Real-World Slip: -16691.33 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568922
+Target Wallet Fill: ~25.00 shares @ ~$0.1100
+Orderbook Latency: 103.54 ms
+Paper Bot Fill: 58.89 shares @ $0.1698 avg price (Size: $10.0)
+Slippage incurred: $0.0598 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $608.15
+Time Slippage Analysis:
+  - Block Time to Detection: -16309.39 ms
+  - Detection to Paper Fill: 111.03 ms
+  - Total Real-World Slip: -16198.36 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568927
+Target Wallet Fill: ~24.90 shares @ ~$0.2400
+Orderbook Latency: 103.88 ms
+Paper Bot Fill: 40.00 shares @ $0.2500 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $1074.77
+Time Slippage Analysis:
+  - Block Time to Detection: -16950.23 ms
+  - Detection to Paper Fill: 120.15 ms
+  - Total Real-World Slip: -16830.08 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xf7a4f1a3716f79e4f588642b5d60e61ddc1cf148 for block 83568928
+Target Wallet Fill: ~100.00 shares @ ~$0.0820
+Orderbook Latency: 101.52 ms
+Paper Bot Fill: 110.95 shares @ $0.0901 avg price (Size: $10.0)
+Slippage incurred: $0.0081 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $138.08
+Time Slippage Analysis:
+  - Block Time to Detection: -16374.40 ms
+  - Detection to Paper Fill: 111.94 ms
+  - Total Real-World Slip: -16262.46 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568932
+Target Wallet Fill: ~7.00 shares @ ~$0.8500
+Orderbook Latency: 107.37 ms
+Paper Bot Fill: 11.49 shares @ $0.8700 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $4793.92
+Time Slippage Analysis:
+  - Block Time to Detection: -17150.32 ms
+  - Detection to Paper Fill: 118.28 ms
+  - Total Real-World Slip: -17032.03 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x15ceffed7bf820cd2d90f90ea24ae9909f5cd5fa for block 83568937
+Target Wallet Fill: ~2552.00 shares @ ~$0.9990
+[BUY] Detected target trade from 0x15ceffed7bf820cd2d90f90ea24ae9909f5cd5fa for block 83568937
+Target Wallet Fill: ~1338.00 shares @ ~$0.9990
+Orderbook Latency: 94.48 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -16590.91 ms
+  - Detection to Paper Fill: 100.16 ms
+  - Total Real-World Slip: -16490.75 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 104.78 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -16590.31 ms
+  - Detection to Paper Fill: 106.76 ms
+  - Total Real-World Slip: -16483.55 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x15ceffed7bf820cd2d90f90ea24ae9909f5cd5fa for block 83568938
+Target Wallet Fill: ~1338.00 shares @ ~$0.9990
+Orderbook Latency: 116.26 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -17000.42 ms
+  - Detection to Paper Fill: 121.30 ms
+  - Total Real-World Slip: -16879.12 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83568943
+Target Wallet Fill: ~250.00 shares @ ~$0.0020
+[SELL] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568943
+Target Wallet Fill: ~19.00 shares @ ~$0.9600
+Orderbook Latency: 107.16 ms
+Paper Bot Fill: 1591.87 shares @ $0.0063 avg price (Size: $10.0)
+Slippage incurred: $0.0043 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $-372.42
+Time Slippage Analysis:
+  - Block Time to Detection: -16643.90 ms
+  - Detection to Paper Fill: 114.71 ms
+  - Total Real-World Slip: -16529.19 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 114.72 ms
+Paper Bot Fill: 10.53 shares @ $0.9500 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $6774.72
+Time Slippage Analysis:
+  - Block Time to Detection: -16642.91 ms
+  - Detection to Paper Fill: 117.72 ms
+  - Total Real-World Slip: -16525.19 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568954
+Target Wallet Fill: ~30.00 shares @ ~$0.3500
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568954
+Target Wallet Fill: ~26.90 shares @ ~$0.6120
+Orderbook Latency: 100.61 ms
+Paper Bot Fill: 30.30 shares @ $0.3300 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $2079.22
+Time Slippage Analysis:
+  - Block Time to Detection: -16136.84 ms
+  - Detection to Paper Fill: 114.57 ms
+  - Total Real-World Slip: -16022.27 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 106.87 ms
+Paper Bot Fill: 16.37 shares @ $0.6110 avg price (Size: $10.0)
+Slippage incurred: $-0.0010 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $4207.34
+Time Slippage Analysis:
+  - Block Time to Detection: -16134.77 ms
+  - Detection to Paper Fill: 116.50 ms
+  - Total Real-World Slip: -16018.27 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568956
+Target Wallet Fill: ~34.00 shares @ ~$0.0410
+Orderbook Latency: 113.63 ms
+Paper Bot Fill: 198.17 shares @ $0.0505 avg price (Size: $10.0)
+Slippage incurred: $0.0095 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $-47.01
+Time Slippage Analysis:
+  - Block Time to Detection: -17281.99 ms
+  - Detection to Paper Fill: 159.27 ms
+  - Total Real-World Slip: -17122.71 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x1f66796b45581868376365aef54b51eb84184c8d for block 83568957
+Target Wallet Fill: ~1489.93 shares @ ~$0.9700
+Orderbook Latency: 98.12 ms
+Paper Bot Fill: 10.10 shares @ $0.9900 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $7270.05
+Time Slippage Analysis:
+  - Block Time to Detection: -16386.62 ms
+  - Detection to Paper Fill: 108.32 ms
+  - Total Real-World Slip: -16278.30 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568960
+Target Wallet Fill: ~30.00 shares @ ~$0.2500
+Orderbook Latency: 98.63 ms
+Paper Bot Fill: 28.68 shares @ $0.3486 avg price (Size: $10.0)
+Slippage incurred: $0.0986 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $2268.51
+Time Slippage Analysis:
+  - Block Time to Detection: -17207.32 ms
+  - Detection to Paper Fill: 105.63 ms
+  - Total Real-World Slip: -17101.69 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568967
+Target Wallet Fill: ~43.90 shares @ ~$0.1970
+Orderbook Latency: 106.96 ms
+Paper Bot Fill: 45.05 shares @ $0.2220 avg price (Size: $10.0)
+Slippage incurred: $0.0250 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $1277.53
+Time Slippage Analysis:
+  - Block Time to Detection: -17426.33 ms
+  - Detection to Paper Fill: 114.06 ms
+  - Total Real-World Slip: -17312.27 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568969
+Target Wallet Fill: ~30.00 shares @ ~$0.4500
+Orderbook Latency: 105.40 ms
+Paper Bot Fill: 17.86 shares @ $0.5600 avg price (Size: $10.0)
+Slippage incurred: $0.1100 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $3938.19
+Time Slippage Analysis:
+  - Block Time to Detection: -17375.95 ms
+  - Detection to Paper Fill: 111.67 ms
+  - Total Real-World Slip: -17264.29 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568974
+Target Wallet Fill: ~44.90 shares @ ~$0.3990
+Orderbook Latency: 101.72 ms
+Paper Bot Fill: 30.58 shares @ $0.3270 avg price (Size: $10.0)
+Slippage incurred: $0.0720 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $2099.91
+Time Slippage Analysis:
+  - Block Time to Detection: -16153.58 ms
+  - Detection to Paper Fill: 113.82 ms
+  - Total Real-World Slip: -16039.76 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568975
+Target Wallet Fill: ~20.00 shares @ ~$0.0170
+Orderbook Latency: 100.57 ms
+Paper Bot Fill: 3504.31 shares @ $0.0027 avg price (Size: $10.0)
+Slippage incurred: $0.0143 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $-458.35
+Time Slippage Analysis:
+  - Block Time to Detection: -16043.88 ms
+  - Detection to Paper Fill: 109.75 ms
+  - Total Real-World Slip: -15934.13 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568977
+Target Wallet Fill: ~30.00 shares @ ~$0.0760
+Orderbook Latency: 99.96 ms
+Paper Bot Fill: 150.00 shares @ $0.0667 avg price (Size: $10.0)
+Slippage incurred: $0.0093 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $45.97
+Time Slippage Analysis:
+  - Block Time to Detection: -17207.56 ms
+  - Detection to Paper Fill: 110.75 ms
+  - Total Real-World Slip: -17096.81 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0x1f66796b45581868376365aef54b51eb84184c8d for block 83568983
+Target Wallet Fill: ~883.82 shares @ ~$0.0020
+[SELL] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83568983
+Target Wallet Fill: ~821.00 shares @ ~$0.0070
+Orderbook Latency: 102.58 ms
+Paper Bot Fill: 1213.68 shares @ $0.0010 avg price (Size: $10.0)
+Slippage incurred: $0.0010 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $-471.81
+Time Slippage Analysis:
+  - Block Time to Detection: -16686.95 ms
+  - Detection to Paper Fill: 117.63 ms
+  - Total Real-World Slip: -16569.32 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 114.63 ms
+Paper Bot Fill: 3213.39 shares @ $0.0017 avg price (Size: $10.0)
+Slippage incurred: $0.0053 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $-466.33
+Time Slippage Analysis:
+  - Block Time to Detection: -16685.95 ms
+  - Detection to Paper Fill: 120.75 ms
+  - Total Real-World Slip: -16565.20 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83568985
+Target Wallet Fill: ~31.60 shares @ ~$0.2100
+Orderbook Latency: 98.18 ms
+Paper Bot Fill: 43.48 shares @ $0.2300 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $1334.61
+Time Slippage Analysis:
+  - Block Time to Detection: -15851.36 ms
+  - Detection to Paper Fill: 109.27 ms
+  - Total Real-World Slip: -15742.09 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83568987
+Target Wallet Fill: ~6.50 shares @ ~$0.7400
+Orderbook Latency: 97.93 ms
+Paper Bot Fill: 13.05 shares @ $0.7662 avg price (Size: $10.0)
+Slippage incurred: $0.0262 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $5588.10
+Time Slippage Analysis:
+  - Block Time to Detection: -16772.46 ms
+  - Detection to Paper Fill: 107.02 ms
+  - Total Real-World Slip: -16665.44 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xc8ab97a9089a9ff7e6ef0688e6e591a066946418 for block 83568988
+Target Wallet Fill: ~500.00 shares @ ~$0.7100
+Orderbook Latency: 95.24 ms
+Paper Bot Fill: 13.70 shares @ $0.7300 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-5.56
+Running Unrealized PnL: $5300.69
+Time Slippage Analysis:
+  - Block Time to Detection: -17056.55 ms
+  - Detection to Paper Fill: 103.43 ms
+  - Total Real-World Slip: -16953.12 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569002
+Target Wallet Fill: ~44.90 shares @ ~$0.2210
+Orderbook Latency: 96.79 ms
+Paper Bot Fill: 51.02 shares @ $0.1960 avg price (Size: $10.0)
+Slippage incurred: $0.0250 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $1051.93
+Time Slippage Analysis:
+  - Block Time to Detection: -16792.88 ms
+  - Detection to Paper Fill: 105.41 ms
+  - Total Real-World Slip: -16687.47 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569003
+Target Wallet Fill: ~19.80 shares @ ~$0.9930
+Orderbook Latency: 94.45 ms
+Paper Bot Fill: 10.29 shares @ $0.9720 avg price (Size: $10.0)
+Slippage incurred: $0.0210 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $7189.04
+Time Slippage Analysis:
+  - Block Time to Detection: -17023.21 ms
+  - Detection to Paper Fill: 113.54 ms
+  - Total Real-World Slip: -16909.67 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569015
+Target Wallet Fill: ~45.00 shares @ ~$0.7200
+Orderbook Latency: 107.33 ms
+Paper Bot Fill: 13.70 shares @ $0.7300 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $5275.25
+Time Slippage Analysis:
+  - Block Time to Detection: -16962.14 ms
+  - Detection to Paper Fill: 115.78 ms
+  - Total Real-World Slip: -16846.35 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569021
+Target Wallet Fill: ~30.00 shares @ ~$0.0220
+Orderbook Latency: 115.71 ms
+Paper Bot Fill: 163.80 shares @ $0.0611 avg price (Size: $10.0)
+Slippage incurred: $0.0391 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $-24.52
+Time Slippage Analysis:
+  - Block Time to Detection: -16960.56 ms
+  - Detection to Paper Fill: 124.66 ms
+  - Total Real-World Slip: -16835.91 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83569024
+Target Wallet Fill: ~150.00 shares @ ~$0.0810
+Orderbook Latency: 119.02 ms
+Paper Bot Fill: 140.58 shares @ $0.0711 avg price (Size: $10.0)
+Slippage incurred: $0.0099 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $57.00
+Time Slippage Analysis:
+  - Block Time to Detection: -17260.40 ms
+  - Detection to Paper Fill: 146.03 ms
+  - Total Real-World Slip: -17114.37 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83569025
+Target Wallet Fill: ~745.00 shares @ ~$0.0070
+Orderbook Latency: 109.49 ms
+Paper Bot Fill: 1666.67 shares @ $0.0060 avg price (Size: $10.0)
+Slippage incurred: $0.0010 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $-469.68
+Time Slippage Analysis:
+  - Block Time to Detection: -16306.38 ms
+  - Detection to Paper Fill: 121.01 ms
+  - Total Real-World Slip: -16185.37 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569027
+Target Wallet Fill: ~16.95 shares @ ~$0.0800
+Orderbook Latency: 105.57 ms
+Paper Bot Fill: 88.38 shares @ $0.1131 avg price (Size: $10.0)
+Slippage incurred: $0.0331 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $396.70
+Time Slippage Analysis:
+  - Block Time to Detection: -16031.21 ms
+  - Detection to Paper Fill: 121.60 ms
+  - Total Real-World Slip: -15909.61 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569030
+Target Wallet Fill: ~30.00 shares @ ~$0.4100
+Orderbook Latency: 96.67 ms
+Paper Bot Fill: 26.05 shares @ $0.3838 avg price (Size: $10.0)
+Slippage incurred: $0.0262 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $2609.57
+Time Slippage Analysis:
+  - Block Time to Detection: -15972.18 ms
+  - Detection to Paper Fill: 105.81 ms
+  - Total Real-World Slip: -15866.37 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569033
+Target Wallet Fill: ~12.50 shares @ ~$0.6500
+Orderbook Latency: 99.95 ms
+Paper Bot Fill: 15.15 shares @ $0.6600 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $4867.11
+Time Slippage Analysis:
+  - Block Time to Detection: -16710.40 ms
+  - Detection to Paper Fill: 122.46 ms
+  - Total Real-World Slip: -16587.94 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569035
+Target Wallet Fill: ~30.00 shares @ ~$0.0220
+Orderbook Latency: 98.13 ms
+Paper Bot Fill: 166.89 shares @ $0.0599 avg price (Size: $10.0)
+Slippage incurred: $0.0379 per share
+Running Realized PnL: $-7.36
+Running Unrealized PnL: $-47.46
+Time Slippage Analysis:
+  - Block Time to Detection: -13847.79 ms
+  - Detection to Paper Fill: 107.86 ms
+  - Total Real-World Slip: -13739.93 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569037
+Target Wallet Fill: ~44.90 shares @ ~$0.2210
+Orderbook Latency: 109.11 ms
+Paper Bot Fill: 51.02 shares @ $0.1960 avg price (Size: $10.0)
+Slippage incurred: $0.0250 per share
+Running Realized PnL: $-9.17
+Running Unrealized PnL: $1091.53
+Time Slippage Analysis:
+  - Block Time to Detection: 1077.61 ms
+  - Detection to Paper Fill: 117.23 ms
+  - Total Real-World Slip: 1194.84 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569038
+Target Wallet Fill: ~249.00 shares @ ~$0.1400
+Orderbook Latency: 107.47 ms
+Paper Bot Fill: 13.96 shares @ $0.7161 avg price (Size: $10.0)
+Slippage incurred: $0.5761 per share
+Running Realized PnL: $-9.17
+Running Unrealized PnL: $5411.61
+Time Slippage Analysis:
+  - Block Time to Detection: 499.93 ms
+  - Detection to Paper Fill: 124.62 ms
+  - Total Real-World Slip: 624.55 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569043
+Target Wallet Fill: ~10.50 shares @ ~$0.1100
+Orderbook Latency: 109.78 ms
+Paper Bot Fill: 15.14 shares @ $0.6604 avg price (Size: $10.0)
+Slippage incurred: $0.5504 per share
+Running Realized PnL: $-9.17
+Running Unrealized PnL: $4947.74
+Time Slippage Analysis:
+  - Block Time to Detection: 222.88 ms
+  - Detection to Paper Fill: 119.06 ms
+  - Total Real-World Slip: 341.94 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569044
+Target Wallet Fill: ~45.00 shares @ ~$0.5000
+Orderbook Latency: 96.52 ms
+Paper Bot Fill: 20.83 shares @ $0.4800 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-9.17
+Running Unrealized PnL: $3444.33
+Time Slippage Analysis:
+  - Block Time to Detection: 14.04 ms
+  - Detection to Paper Fill: 113.58 ms
+  - Total Real-World Slip: 127.62 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569046
+Target Wallet Fill: ~13.30 shares @ ~$0.2300
+Orderbook Latency: 103.26 ms
+Paper Bot Fill: 44.77 shares @ $0.2234 avg price (Size: $10.0)
+Slippage incurred: $0.0066 per share
+Running Realized PnL: $-9.46
+Running Unrealized PnL: $1305.48
+Time Slippage Analysis:
+  - Block Time to Detection: -559.72 ms
+  - Detection to Paper Fill: 112.82 ms
+  - Total Real-World Slip: -446.90 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569047
+Target Wallet Fill: ~31.60 shares @ ~$0.2300
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569047
+Target Wallet Fill: ~250.00 shares @ ~$0.0020
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569047
+Target Wallet Fill: ~12.00 shares @ ~$0.0020
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569047
+Target Wallet Fill: ~32.00 shares @ ~$0.0020
+Orderbook Latency: 100.08 ms
+Paper Bot Fill: 43.48 shares @ $0.2300 avg price (Size: $10.0)
+Slippage incurred: $0.0000 per share
+Running Realized PnL: $-9.46
+Running Unrealized PnL: $1360.62
+Time Slippage Analysis:
+  - Block Time to Detection: 5028.93 ms
+  - Detection to Paper Fill: 117.69 ms
+  - Total Real-World Slip: 5146.61 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 106.25 ms
+Paper Bot Fill: 1154.75 shares @ $0.0087 avg price (Size: $10.0)
+Slippage incurred: $0.0067 per share
+Running Realized PnL: $-9.46
+Running Unrealized PnL: $-474.59
+Time Slippage Analysis:
+  - Block Time to Detection: 5037.58 ms
+  - Detection to Paper Fill: 130.35 ms
+  - Total Real-World Slip: 5167.93 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 118.97 ms
+Paper Bot Fill: 1262.80 shares @ $0.0079 avg price (Size: $10.0)
+Slippage incurred: $0.0059 per share
+Running Realized PnL: $-9.46
+Running Unrealized PnL: $-481.59
+Time Slippage Analysis:
+  - Block Time to Detection: 5044.53 ms
+  - Detection to Paper Fill: 135.55 ms
+  - Total Real-World Slip: 5180.08 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 117.22 ms
+Paper Bot Fill: 1655.43 shares @ $0.0060 avg price (Size: $10.0)
+Slippage incurred: $0.0040 per share
+Running Realized PnL: $-9.46
+Running Unrealized PnL: $-501.71
+Time Slippage Analysis:
+  - Block Time to Detection: 5059.53 ms
+  - Detection to Paper Fill: 141.68 ms
+  - Total Real-World Slip: 5201.21 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569048
+Target Wallet Fill: ~10.30 shares @ ~$0.4100
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569048
+Target Wallet Fill: ~32.00 shares @ ~$0.0020
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569048
+Target Wallet Fill: ~45.00 shares @ ~$0.2000
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569048
+Target Wallet Fill: ~45.00 shares @ ~$0.2300
+Orderbook Latency: 103.18 ms
+Paper Bot Fill: 1655.43 shares @ $0.0060 avg price (Size: $10.0)
+Slippage incurred: $0.0040 per share
+Running Realized PnL: $-9.46
+Running Unrealized PnL: $-501.71
+Time Slippage Analysis:
+  - Block Time to Detection: 4600.23 ms
+  - Detection to Paper Fill: 119.17 ms
+  - Total Real-World Slip: 4719.40 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 121.09 ms
+Paper Bot Fill: 21.05 shares @ $0.4751 avg price (Size: $10.0)
+Slippage incurred: $0.0651 per share
+Running Realized PnL: $-9.46
+Running Unrealized PnL: $6074.49
+Time Slippage Analysis:
+  - Block Time to Detection: 4599.23 ms
+  - Detection to Paper Fill: 124.09 ms
+  - Total Real-World Slip: 4723.32 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 110.09 ms
+Paper Bot Fill: 50.00 shares @ $0.2000 avg price (Size: $10.0)
+Slippage incurred: $0.0000 per share
+Running Realized PnL: $-9.46
+Running Unrealized PnL: $2211.77
+Time Slippage Analysis:
+  - Block Time to Detection: 4607.71 ms
+  - Detection to Paper Fill: 142.21 ms
+  - Total Real-World Slip: 4749.92 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 150.36 ms
+Paper Bot Fill: 43.48 shares @ $0.2300 avg price (Size: $10.0)
+Slippage incurred: $0.0000 per share
+Running Realized PnL: $-9.03
+Running Unrealized PnL: $2634.06
+Time Slippage Analysis:
+  - Block Time to Detection: 4615.23 ms
+  - Detection to Paper Fill: 166.87 ms
+  - Total Real-World Slip: 4782.10 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83569049
+Target Wallet Fill: ~44.00 shares @ ~$0.0710
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569049
+Target Wallet Fill: ~45.00 shares @ ~$0.2300
+Orderbook Latency: 99.53 ms
+Paper Bot Fill: 43.48 shares @ $0.2300 avg price (Size: $10.0)
+Slippage incurred: $0.0000 per share
+Running Realized PnL: $-8.59
+Running Unrealized PnL: $2634.04
+Time Slippage Analysis:
+  - Block Time to Detection: 3638.52 ms
+  - Detection to Paper Fill: 109.90 ms
+  - Total Real-World Slip: 3748.42 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 121.17 ms
+Paper Bot Fill: 111.19 shares @ $0.0899 avg price (Size: $10.0)
+Slippage incurred: $0.0189 per share
+Running Realized PnL: $-8.59
+Running Unrealized PnL: $666.84
+Time Slippage Analysis:
+  - Block Time to Detection: 3637.54 ms
+  - Detection to Paper Fill: 145.13 ms
+  - Total Real-World Slip: 3782.67 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569050
+Target Wallet Fill: ~45.00 shares @ ~$0.2300
+Orderbook Latency: 104.85 ms
+Paper Bot Fill: 43.48 shares @ $0.2300 avg price (Size: $10.0)
+Slippage incurred: $0.0000 per share
+Running Realized PnL: $-8.59
+Running Unrealized PnL: $2649.61
+Time Slippage Analysis:
+  - Block Time to Detection: 4883.82 ms
+  - Detection to Paper Fill: 112.38 ms
+  - Total Real-World Slip: 4996.20 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569051
+Target Wallet Fill: ~10.20 shares @ ~$0.7300
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569051
+Target Wallet Fill: ~62.00 shares @ ~$0.0250
+Orderbook Latency: 100.75 ms
+Paper Bot Fill: 111.19 shares @ $0.0899 avg price (Size: $10.0)
+Slippage incurred: $0.0649 per share
+Running Realized PnL: $-8.59
+Running Unrealized PnL: $666.84
+Time Slippage Analysis:
+  - Block Time to Detection: 6495.80 ms
+  - Detection to Paper Fill: 109.53 ms
+  - Total Real-World Slip: 6605.32 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 111.53 ms
+Paper Bot Fill: 13.89 shares @ $0.7200 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-8.73
+Running Unrealized PnL: $9656.51
+Time Slippage Analysis:
+  - Block Time to Detection: 6494.80 ms
+  - Detection to Paper Fill: 114.53 ms
+  - Total Real-World Slip: 6609.32 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569052
+Target Wallet Fill: ~45.00 shares @ ~$0.2300
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569052
+Target Wallet Fill: ~30.00 shares @ ~$0.8800
+Orderbook Latency: 102.22 ms
+Paper Bot Fill: 40.00 shares @ $0.2500 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-8.73
+Running Unrealized PnL: $2957.11
+Time Slippage Analysis:
+  - Block Time to Detection: 5444.65 ms
+  - Detection to Paper Fill: 111.74 ms
+  - Total Real-World Slip: 5556.39 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 112.79 ms
+Paper Bot Fill: 11.88 shares @ $0.8416 avg price (Size: $10.0)
+Slippage incurred: $0.0384 per share
+Running Realized PnL: $-8.73
+Running Unrealized PnL: $11413.81
+Time Slippage Analysis:
+  - Block Time to Detection: 5445.66 ms
+  - Detection to Paper Fill: 115.75 ms
+  - Total Real-World Slip: 5561.41 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569062
+Target Wallet Fill: ~45.00 shares @ ~$0.2030
+Orderbook Latency: 108.30 ms
+Paper Bot Fill: 44.06 shares @ $0.2269 avg price (Size: $10.0)
+Slippage incurred: $0.0239 per share
+Running Realized PnL: $-8.73
+Running Unrealized PnL: $2627.51
+Time Slippage Analysis:
+  - Block Time to Detection: 47.77 ms
+  - Detection to Paper Fill: 117.43 ms
+  - Total Real-World Slip: 165.21 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83569064
+Target Wallet Fill: ~114.00 shares @ ~$0.0110
+Orderbook Latency: 106.42 ms
+Paper Bot Fill: 388.05 shares @ $0.0258 avg price (Size: $10.0)
+Slippage incurred: $0.0148 per share
+Running Realized PnL: $-8.73
+Running Unrealized PnL: $-256.90
+Time Slippage Analysis:
+  - Block Time to Detection: -2719.00 ms
+  - Detection to Paper Fill: 114.78 ms
+  - Total Real-World Slip: -2604.22 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569065
+Target Wallet Fill: ~7.00 shares @ ~$0.6400
+Orderbook Latency: 111.58 ms
+Paper Bot Fill: 14.93 shares @ $0.6700 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-8.73
+Running Unrealized PnL: $9230.12
+Time Slippage Analysis:
+  - Block Time to Detection: -4067.00 ms
+  - Detection to Paper Fill: 122.20 ms
+  - Total Real-World Slip: -3944.80 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569067
+Target Wallet Fill: ~15.00 shares @ ~$0.5900
+Orderbook Latency: 119.03 ms
+Paper Bot Fill: 14.55 shares @ $0.6872 avg price (Size: $10.0)
+Slippage incurred: $0.0972 per share
+Running Realized PnL: $-8.73
+Running Unrealized PnL: $9484.03
+Time Slippage Analysis:
+  - Block Time to Detection: -6773.66 ms
+  - Detection to Paper Fill: 128.47 ms
+  - Total Real-World Slip: -6645.19 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569068
+Target Wallet Fill: ~14.90 shares @ ~$0.2110
+Orderbook Latency: 108.88 ms
+Paper Bot Fill: 44.06 shares @ $0.2269 avg price (Size: $10.0)
+Slippage incurred: $0.0159 per share
+Running Realized PnL: $-8.73
+Running Unrealized PnL: $2692.27
+Time Slippage Analysis:
+  - Block Time to Detection: -5911.58 ms
+  - Detection to Paper Fill: 117.90 ms
+  - Total Real-World Slip: -5793.69 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0x1f66796b45581868376365aef54b51eb84184c8d for block 83569070
+Target Wallet Fill: ~6092.36 shares @ ~$0.9950
+Orderbook Latency: 118.13 ms
+Paper Bot Fill: 10.60 shares @ $0.9430 avg price (Size: $10.0)
+Slippage incurred: $0.0520 per share
+Running Realized PnL: $-9.23
+Running Unrealized PnL: $13290.19
+Time Slippage Analysis:
+  - Block Time to Detection: -8820.05 ms
+  - Detection to Paper Fill: 136.37 ms
+  - Total Real-World Slip: -8683.68 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569079
+Target Wallet Fill: ~25.00 shares @ ~$0.0900
+Orderbook Latency: 101.52 ms
+Paper Bot Fill: 83.33 shares @ $0.1200 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-9.23
+Running Unrealized PnL: $1118.36
+Time Slippage Analysis:
+  - Block Time to Detection: -16889.47 ms
+  - Detection to Paper Fill: 126.27 ms
+  - Total Real-World Slip: -16763.20 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569086
+Target Wallet Fill: ~30.00 shares @ ~$0.6380
+Orderbook Latency: 105.55 ms
+Paper Bot Fill: 14.53 shares @ $0.6880 avg price (Size: $10.0)
+Slippage incurred: $0.0500 per share
+Running Realized PnL: $-9.23
+Running Unrealized PnL: $9566.18
+Time Slippage Analysis:
+  - Block Time to Detection: -16039.33 ms
+  - Detection to Paper Fill: 115.05 ms
+  - Total Real-World Slip: -15924.28 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569089
+Target Wallet Fill: ~30.00 shares @ ~$0.1500
+Orderbook Latency: 107.01 ms
+Paper Bot Fill: 50.00 shares @ $0.2000 avg price (Size: $10.0)
+Slippage incurred: $0.0500 per share
+Running Realized PnL: $-9.23
+Running Unrealized PnL: $2301.10
+Time Slippage Analysis:
+  - Block Time to Detection: -17030.20 ms
+  - Detection to Paper Fill: 115.77 ms
+  - Total Real-World Slip: -16914.43 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569090
+Target Wallet Fill: ~21.80 shares @ ~$0.1200
+Orderbook Latency: 106.98 ms
+Paper Bot Fill: 71.43 shares @ $0.1400 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-9.23
+Running Unrealized PnL: $1404.85
+Time Slippage Analysis:
+  - Block Time to Detection: -16867.06 ms
+  - Detection to Paper Fill: 114.02 ms
+  - Total Real-World Slip: -16753.04 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569100
+Target Wallet Fill: ~44.90 shares @ ~$0.2310
+Orderbook Latency: 101.73 ms
+Paper Bot Fill: 47.62 shares @ $0.2100 avg price (Size: $10.0)
+Slippage incurred: $0.0210 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $2456.37
+Time Slippage Analysis:
+  - Block Time to Detection: -16817.05 ms
+  - Detection to Paper Fill: 111.73 ms
+  - Total Real-World Slip: -16705.32 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569102
+Target Wallet Fill: ~11.00 shares @ ~$0.8300
+Orderbook Latency: 105.04 ms
+Paper Bot Fill: 11.63 shares @ $0.8600 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $12181.19
+Time Slippage Analysis:
+  - Block Time to Detection: -15448.97 ms
+  - Detection to Paper Fill: 119.79 ms
+  - Total Real-World Slip: -15329.18 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0x1f66796b45581868376365aef54b51eb84184c8d for block 83569105
+Target Wallet Fill: ~1194.74 shares @ ~$0.0010
+Orderbook Latency: 165.33 ms
+Not enough liquidity in orderbook to fill paper trade!
+Time Slippage Analysis:
+  - Block Time to Detection: -15712.27 ms
+  - Detection to Paper Fill: 173.30 ms
+  - Total Real-World Slip: -15538.96 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569110
+Target Wallet Fill: ~14.90 shares @ ~$0.0190
+Orderbook Latency: 100.43 ms
+Paper Bot Fill: 484.57 shares @ $0.0206 avg price (Size: $10.0)
+Slippage incurred: $0.0016 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $-386.50
+Time Slippage Analysis:
+  - Block Time to Detection: -16510.32 ms
+  - Detection to Paper Fill: 107.44 ms
+  - Total Real-World Slip: -16402.88 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569116
+Target Wallet Fill: ~250.00 shares @ ~$0.0020
+Orderbook Latency: 105.54 ms
+Paper Bot Fill: 1593.43 shares @ $0.0063 avg price (Size: $10.0)
+Slippage incurred: $0.0043 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $-608.49
+Time Slippage Analysis:
+  - Block Time to Detection: -16831.72 ms
+  - Detection to Paper Fill: 113.63 ms
+  - Total Real-World Slip: -16718.10 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569121
+Target Wallet Fill: ~30.00 shares @ ~$0.9720
+Orderbook Latency: 107.58 ms
+Paper Bot Fill: 10.07 shares @ $0.9935 avg price (Size: $10.0)
+Slippage incurred: $0.0215 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $16224.95
+Time Slippage Analysis:
+  - Block Time to Detection: -16325.96 ms
+  - Detection to Paper Fill: 116.78 ms
+  - Total Real-World Slip: -16209.18 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569128
+Target Wallet Fill: ~18.50 shares @ ~$0.7400
+Orderbook Latency: 114.88 ms
+Paper Bot Fill: 13.70 shares @ $0.7300 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $11729.00
+Time Slippage Analysis:
+  - Block Time to Detection: -17055.73 ms
+  - Detection to Paper Fill: 122.40 ms
+  - Total Real-World Slip: -16933.33 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xf7a4f1a3716f79e4f588642b5d60e61ddc1cf148 for block 83569130
+Target Wallet Fill: ~100.00 shares @ ~$0.0820
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569130
+Target Wallet Fill: ~206.00 shares @ ~$0.0020
+Orderbook Latency: 110.55 ms
+Paper Bot Fill: 110.49 shares @ $0.0905 avg price (Size: $10.0)
+Slippage incurred: $0.0085 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $818.58
+Time Slippage Analysis:
+  - Block Time to Detection: -17278.14 ms
+  - Detection to Paper Fill: 122.74 ms
+  - Total Real-World Slip: -17155.40 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 118.08 ms
+Paper Bot Fill: 502.19 shares @ $0.0199 avg price (Size: $10.0)
+Slippage incurred: $0.0179 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $-393.57
+Time Slippage Analysis:
+  - Block Time to Detection: -17274.08 ms
+  - Detection to Paper Fill: 131.83 ms
+  - Total Real-World Slip: -17142.25 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569134
+Target Wallet Fill: ~19.00 shares @ ~$0.6300
+Orderbook Latency: 111.36 ms
+Paper Bot Fill: 14.42 shares @ $0.6934 avg price (Size: $10.0)
+Slippage incurred: $0.0634 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $11509.88
+Time Slippage Analysis:
+  - Block Time to Detection: -17348.96 ms
+  - Detection to Paper Fill: 120.42 ms
+  - Total Real-World Slip: -17228.54 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83569141
+Target Wallet Fill: ~18.00 shares @ ~$0.3300
+Orderbook Latency: 104.14 ms
+Paper Bot Fill: 27.65 shares @ $0.3616 avg price (Size: $10.0)
+Slippage incurred: $0.0316 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $5640.57
+Time Slippage Analysis:
+  - Block Time to Detection: -16008.52 ms
+  - Detection to Paper Fill: 111.14 ms
+  - Total Real-World Slip: -15897.38 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569143
+Target Wallet Fill: ~30.00 shares @ ~$0.0280
+Orderbook Latency: 101.32 ms
+Paper Bot Fill: 120.73 shares @ $0.0828 avg price (Size: $10.0)
+Slippage incurred: $0.0548 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $701.83
+Time Slippage Analysis:
+  - Block Time to Detection: -17231.61 ms
+  - Detection to Paper Fill: 110.39 ms
+  - Total Real-World Slip: -17121.22 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83569145
+Target Wallet Fill: ~18.00 shares @ ~$0.3300
+Orderbook Latency: 174.70 ms
+Paper Bot Fill: 28.09 shares @ $0.3560 avg price (Size: $10.0)
+Slippage incurred: $0.0260 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $5574.93
+Time Slippage Analysis:
+  - Block Time to Detection: -16923.21 ms
+  - Detection to Paper Fill: 183.70 ms
+  - Total Real-World Slip: -16739.51 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xc8ab97a9089a9ff7e6ef0688e6e591a066946418 for block 83569148
+Target Wallet Fill: ~29.80 shares @ ~$0.7300
+Orderbook Latency: 101.53 ms
+Paper Bot Fill: 14.71 shares @ $0.6800 avg price (Size: $10.0)
+Slippage incurred: $0.0500 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $11362.39
+Time Slippage Analysis:
+  - Block Time to Detection: -17017.99 ms
+  - Detection to Paper Fill: 110.51 ms
+  - Total Real-World Slip: -16907.48 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569149
+Target Wallet Fill: ~45.00 shares @ ~$0.2200
+Orderbook Latency: 106.10 ms
+Paper Bot Fill: 41.67 shares @ $0.2400 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $3502.00
+Time Slippage Analysis:
+  - Block Time to Detection: -17278.10 ms
+  - Detection to Paper Fill: 114.70 ms
+  - Total Real-World Slip: -17163.40 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569167
+Target Wallet Fill: ~15.60 shares @ ~$0.1500
+Orderbook Latency: 131.16 ms
+Paper Bot Fill: 76.92 shares @ $0.1300 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-10.13
+Running Unrealized PnL: $1532.31
+Time Slippage Analysis:
+  - Block Time to Detection: -16783.47 ms
+  - Detection to Paper Fill: 141.17 ms
+  - Total Real-World Slip: -16642.30 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569172
+Target Wallet Fill: ~43.90 shares @ ~$0.2280
+Orderbook Latency: 107.57 ms
+Paper Bot Fill: 45.66 shares @ $0.2190 avg price (Size: $10.0)
+Slippage incurred: $0.0090 per share
+Running Realized PnL: $-10.58
+Running Unrealized PnL: $3126.42
+Time Slippage Analysis:
+  - Block Time to Detection: -16170.65 ms
+  - Detection to Paper Fill: 119.57 ms
+  - Total Real-World Slip: -16051.08 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569173
+Target Wallet Fill: ~29.90 shares @ ~$0.1300
+Orderbook Latency: 98.54 ms
+Paper Bot Fill: 90.91 shares @ $0.1100 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-10.58
+Running Unrealized PnL: $1179.62
+Time Slippage Analysis:
+  - Block Time to Detection: -16535.72 ms
+  - Detection to Paper Fill: 108.53 ms
+  - Total Real-World Slip: -16427.19 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569177
+Target Wallet Fill: ~13.90 shares @ ~$0.2260
+Orderbook Latency: 123.57 ms
+Paper Bot Fill: 45.66 shares @ $0.2190 avg price (Size: $10.0)
+Slippage incurred: $0.0070 per share
+Running Realized PnL: $-11.03
+Running Unrealized PnL: $3126.87
+Time Slippage Analysis:
+  - Block Time to Detection: -15865.33 ms
+  - Detection to Paper Fill: 164.35 ms
+  - Total Real-World Slip: -15700.98 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569179
+Target Wallet Fill: ~13.90 shares @ ~$0.2280
+Orderbook Latency: 110.34 ms
+Paper Bot Fill: 45.66 shares @ $0.2190 avg price (Size: $10.0)
+Slippage incurred: $0.0090 per share
+Running Realized PnL: $-11.49
+Running Unrealized PnL: $3127.07
+Time Slippage Analysis:
+  - Block Time to Detection: -16467.65 ms
+  - Detection to Paper Fill: 119.34 ms
+  - Total Real-World Slip: -16348.31 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569187
+Target Wallet Fill: ~25.00 shares @ ~$0.2900
+Orderbook Latency: 114.71 ms
+Paper Bot Fill: 30.27 shares @ $0.3304 avg price (Size: $10.0)
+Slippage incurred: $0.0404 per share
+Running Realized PnL: $-11.49
+Running Unrealized PnL: $5109.56
+Time Slippage Analysis:
+  - Block Time to Detection: -15245.13 ms
+  - Detection to Paper Fill: 121.33 ms
+  - Total Real-World Slip: -15123.81 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569189
+Target Wallet Fill: ~30.60 shares @ ~$0.0690
+Orderbook Latency: 110.90 ms
+Paper Bot Fill: 803.83 shares @ $0.0123 avg price (Size: $10.0)
+Slippage incurred: $0.0567 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $-544.35
+Time Slippage Analysis:
+  - Block Time to Detection: -15589.76 ms
+  - Detection to Paper Fill: 124.27 ms
+  - Total Real-World Slip: -15465.49 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569191
+Target Wallet Fill: ~48.20 shares @ ~$0.1200
+Orderbook Latency: 109.05 ms
+Paper Bot Fill: 122.78 shares @ $0.0814 avg price (Size: $10.0)
+Slippage incurred: $0.0386 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $664.89
+Time Slippage Analysis:
+  - Block Time to Detection: -15665.29 ms
+  - Detection to Paper Fill: 116.05 ms
+  - Total Real-World Slip: -15549.24 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x906f2454a777600aea6c506247566decef82371a for block 83569192
+Target Wallet Fill: ~15.00 shares @ ~$0.9700
+[BUY] Detected target trade from 0x906f2454a777600aea6c506247566decef82371a for block 83569192
+Target Wallet Fill: ~15.00 shares @ ~$0.9950
+Orderbook Latency: 105.11 ms
+Paper Bot Fill: 10.31 shares @ $0.9700 avg price (Size: $10.0)
+Slippage incurred: $-0.0000 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $16209.58
+Time Slippage Analysis:
+  - Block Time to Detection: -15330.29 ms
+  - Detection to Paper Fill: 111.98 ms
+  - Total Real-World Slip: -15218.31 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 113.01 ms
+Paper Bot Fill: 10.05 shares @ $0.9950 avg price (Size: $10.0)
+Slippage incurred: $-0.0000 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $16647.19
+Time Slippage Analysis:
+  - Block Time to Detection: -15330.29 ms
+  - Detection to Paper Fill: 115.80 ms
+  - Total Real-World Slip: -15214.49 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569193
+Target Wallet Fill: ~36.00 shares @ ~$0.9690
+[BUY] Detected target trade from 0x906f2454a777600aea6c506247566decef82371a for block 83569193
+Target Wallet Fill: ~12.00 shares @ ~$0.8100
+[BUY] Detected target trade from 0x906f2454a777600aea6c506247566decef82371a for block 83569193
+Target Wallet Fill: ~25.00 shares @ ~$0.9700
+[BUY] Detected target trade from 0x906f2454a777600aea6c506247566decef82371a for block 83569193
+Target Wallet Fill: ~6.00 shares @ ~$0.8900
+Orderbook Latency: 104.17 ms
+Paper Bot Fill: 10.37 shares @ $0.9640 avg price (Size: $10.0)
+Slippage incurred: $0.0050 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $16104.03
+Time Slippage Analysis:
+  - Block Time to Detection: -16284.80 ms
+  - Detection to Paper Fill: 115.71 ms
+  - Total Real-World Slip: -16169.10 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 120.31 ms
+Paper Bot Fill: 10.87 shares @ $0.9200 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $15333.59
+Time Slippage Analysis:
+  - Block Time to Detection: -16281.80 ms
+  - Detection to Paper Fill: 126.82 ms
+  - Total Real-World Slip: -16154.98 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 129.86 ms
+Paper Bot Fill: 10.31 shares @ $0.9700 avg price (Size: $10.0)
+Slippage incurred: $0.0000 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $16209.87
+Time Slippage Analysis:
+  - Block Time to Detection: -16282.80 ms
+  - Detection to Paper Fill: 140.24 ms
+  - Total Real-World Slip: -16142.57 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 150.32 ms
+Paper Bot Fill: 11.90 shares @ $0.8400 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $13930.20
+Time Slippage Analysis:
+  - Block Time to Detection: -16283.80 ms
+  - Detection to Paper Fill: 155.87 ms
+  - Total Real-World Slip: -16127.93 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x906f2454a777600aea6c506247566decef82371a for block 83569195
+Target Wallet Fill: ~15.00 shares @ ~$0.9950
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83569195
+Target Wallet Fill: ~22.00 shares @ ~$0.2800
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569195
+Target Wallet Fill: ~9.37 shares @ ~$0.1700
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569195
+Target Wallet Fill: ~6.19 shares @ ~$0.3100
+[BUY] Detected target trade from 0x5f211a24da4c005d9438a1ea269673b85ed0b376 for block 83569195
+Target Wallet Fill: ~95.00 shares @ ~$0.0110
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569195
+Target Wallet Fill: ~5.30 shares @ ~$0.0160
+Orderbook Latency: 98.04 ms
+Paper Bot Fill: 31.50 shares @ $0.3175 avg price (Size: $10.0)
+Slippage incurred: $0.0375 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $4760.75
+Time Slippage Analysis:
+  - Block Time to Detection: -15900.76 ms
+  - Detection to Paper Fill: 105.69 ms
+  - Total Real-World Slip: -15795.07 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 104.15 ms
+Paper Bot Fill: 408.35 shares @ $0.0245 avg price (Size: $10.0)
+Slippage incurred: $0.0135 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $-389.51
+Time Slippage Analysis:
+  - Block Time to Detection: -15898.22 ms
+  - Detection to Paper Fill: 110.28 ms
+  - Total Real-World Slip: -15787.94 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 121.53 ms
+Paper Bot Fill: 10.05 shares @ $0.9950 avg price (Size: $10.0)
+Slippage incurred: $-0.0000 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $17067.77
+Time Slippage Analysis:
+  - Block Time to Detection: -15900.76 ms
+  - Detection to Paper Fill: 123.53 ms
+  - Total Real-World Slip: -15777.23 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 135.95 ms
+Paper Bot Fill: 45.92 shares @ $0.2178 avg price (Size: $10.0)
+Slippage incurred: $0.0478 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $3079.30
+Time Slippage Analysis:
+  - Block Time to Detection: -15899.18 ms
+  - Detection to Paper Fill: 140.43 ms
+  - Total Real-World Slip: -15758.75 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 142.54 ms
+Paper Bot Fill: 163.93 shares @ $0.0610 avg price (Size: $10.0)
+Slippage incurred: $0.0450 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $250.66
+Time Slippage Analysis:
+  - Block Time to Detection: -15897.22 ms
+  - Detection to Paper Fill: 145.54 ms
+  - Total Real-World Slip: -15751.67 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 148.54 ms
+Paper Bot Fill: 28.80 shares @ $0.3472 avg price (Size: $10.0)
+Slippage incurred: $0.0372 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $5462.09
+Time Slippage Analysis:
+  - Block Time to Detection: -15898.22 ms
+  - Detection to Paper Fill: 150.40 ms
+  - Total Real-World Slip: -15747.82 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x906f2454a777600aea6c506247566decef82371a for block 83569196
+Target Wallet Fill: ~11.00 shares @ ~$0.8400
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569196
+Target Wallet Fill: ~30.00 shares @ ~$0.0710
+Orderbook Latency: 96.43 ms
+Paper Bot Fill: 11.90 shares @ $0.8400 avg price (Size: $10.0)
+Slippage incurred: $0.0000 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $14448.58
+Time Slippage Analysis:
+  - Block Time to Detection: -16488.34 ms
+  - Detection to Paper Fill: 103.90 ms
+  - Total Real-World Slip: -16384.44 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 104.93 ms
+Paper Bot Fill: 85.03 shares @ $0.1176 avg price (Size: $10.0)
+Slippage incurred: $0.0466 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $1266.14
+Time Slippage Analysis:
+  - Block Time to Detection: -16486.78 ms
+  - Detection to Paper Fill: 107.90 ms
+  - Total Real-World Slip: -16378.89 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569197
+Target Wallet Fill: ~16.45 shares @ ~$0.2700
+[BUY] Detected target trade from 0xb40e89677d59665d5188541ad860450a6e2a7cc9 for block 83569197
+Target Wallet Fill: ~16.45 shares @ ~$0.2700
+Orderbook Latency: 98.00 ms
+Paper Bot Fill: 28.80 shares @ $0.3472 avg price (Size: $10.0)
+Slippage incurred: $0.0772 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $5475.74
+Time Slippage Analysis:
+  - Block Time to Detection: -14600.16 ms
+  - Detection to Paper Fill: 105.34 ms
+  - Total Real-World Slip: -14494.82 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 107.34 ms
+Paper Bot Fill: 28.80 shares @ $0.3472 avg price (Size: $10.0)
+Slippage incurred: $0.0772 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $5475.74
+Time Slippage Analysis:
+  - Block Time to Detection: -14600.16 ms
+  - Detection to Paper Fill: 112.75 ms
+  - Total Real-World Slip: -14487.42 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569198
+Target Wallet Fill: ~232.00 shares @ ~$0.0020
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569198
+Target Wallet Fill: ~280.00 shares @ ~$0.0020
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569198
+Target Wallet Fill: ~26.20 shares @ ~$0.7900
+Orderbook Latency: 99.91 ms
+Paper Bot Fill: 150.78 shares @ $0.0663 avg price (Size: $10.0)
+Slippage incurred: $0.0643 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $309.75
+Time Slippage Analysis:
+  - Block Time to Detection: -16375.09 ms
+  - Detection to Paper Fill: 112.20 ms
+  - Total Real-World Slip: -16262.90 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 109.28 ms
+Paper Bot Fill: 12.20 shares @ $0.8200 avg price (Size: $10.0)
+Slippage incurred: $0.0300 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $14284.21
+Time Slippage Analysis:
+  - Block Time to Detection: -16369.47 ms
+  - Detection to Paper Fill: 112.39 ms
+  - Total Real-World Slip: -16257.09 ms
+--------------------------------------------------------------------------------
+Orderbook Latency: 129.65 ms
+Paper Bot Fill: 354.86 shares @ $0.0282 avg price (Size: $10.0)
+Slippage incurred: $0.0262 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $-407.16
+Time Slippage Analysis:
+  - Block Time to Detection: -16376.09 ms
+  - Detection to Paper Fill: 133.78 ms
+  - Total Real-World Slip: -16242.32 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569199
+Target Wallet Fill: ~30.00 shares @ ~$0.0090
+Orderbook Latency: 112.54 ms
+Paper Bot Fill: 115.30 shares @ $0.0867 avg price (Size: $10.0)
+Slippage incurred: $0.0777 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $699.92
+Time Slippage Analysis:
+  - Block Time to Detection: -15075.88 ms
+  - Detection to Paper Fill: 116.55 ms
+  - Total Real-World Slip: -14959.33 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xf7a4f1a3716f79e4f588642b5d60e61ddc1cf148 for block 83569204
+Target Wallet Fill: ~100.00 shares @ ~$0.2800
+Orderbook Latency: 138.00 ms
+Paper Bot Fill: 33.98 shares @ $0.2943 avg price (Size: $10.0)
+Slippage incurred: $0.0143 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $4649.11
+Time Slippage Analysis:
+  - Block Time to Detection: -16534.82 ms
+  - Detection to Paper Fill: 142.56 ms
+  - Total Real-World Slip: -16392.26 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0x87650b9f63563f7c456d9bbcceee5f9faf06ed81 for block 83569209
+Target Wallet Fill: ~250.00 shares @ ~$0.0020
+Orderbook Latency: 109.75 ms
+Paper Bot Fill: 1560.09 shares @ $0.0064 avg price (Size: $10.0)
+Slippage incurred: $0.0044 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $-837.84
+Time Slippage Analysis:
+  - Block Time to Detection: -15328.94 ms
+  - Detection to Paper Fill: 113.77 ms
+  - Total Real-World Slip: -15215.17 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569214
+Target Wallet Fill: ~30.00 shares @ ~$0.0250
+Orderbook Latency: 115.99 ms
+Paper Bot Fill: 163.29 shares @ $0.0612 avg price (Size: $10.0)
+Slippage incurred: $0.0362 per share
+Running Realized PnL: $-50.19
+Running Unrealized PnL: $292.71
+Time Slippage Analysis:
+  - Block Time to Detection: -17343.64 ms
+  - Detection to Paper Fill: 119.90 ms
+  - Total Real-World Slip: -17223.74 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569215
+Target Wallet Fill: ~45.00 shares @ ~$0.2300
+Orderbook Latency: 100.88 ms
+Paper Bot Fill: 47.62 shares @ $0.2100 avg price (Size: $10.0)
+Slippage incurred: $0.0200 per share
+Running Realized PnL: $-51.62
+Running Unrealized PnL: $3385.35
+Time Slippage Analysis:
+  - Block Time to Detection: -15525.70 ms
+  - Detection to Paper Fill: 105.91 ms
+  - Total Real-World Slip: -15419.79 ms
+--------------------------------------------------------------------------------
+[SELL] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569218
+Target Wallet Fill: ~45.00 shares @ ~$0.2300
+Orderbook Latency: 102.13 ms
+Paper Bot Fill: 45.45 shares @ $0.2200 avg price (Size: $10.0)
+Slippage incurred: $0.0100 per share
+Running Realized PnL: $-51.62
+Running Unrealized PnL: $3592.75
+Time Slippage Analysis:
+  - Block Time to Detection: -16823.96 ms
+  - Detection to Paper Fill: 108.13 ms
+  - Total Real-World Slip: -16715.83 ms
+--------------------------------------------------------------------------------
+[BUY] Detected target trade from 0xd6eef76188c7068719ac881460b7431e1ae137a2 for block 83569220
+Target Wallet Fill: ~18.60 shares @ ~$0.0210
+Orderbook Latency: 104.57 ms
+Paper Bot Fill: 143.13 shares @ $0.0699 avg price (Size: $10.0)
+Slippage incurred: $0.0489 per share
+Running Realized PnL: $-51.62
+Running Unrealized PnL: $479.06
+Time Slippage Analysis:
+  - Block Time to Detection: -17063.25 ms
+  - Detection to Paper Fill: 109.53 ms
+  - Total Real-World Slip: -16953.72 ms
+--------------------------------------------------------------------------------

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poly Trade Scanner — Paper Trading Dashboard</title>
+    <meta name="description" content="Real-time paper trading dashboard for Polymarket copy-trading strategy">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <div class="logo-icon">◈</div>
+                <span>Poly Trade Scanner</span>
+            </div>
+            <span class="badge badge-live" id="status-badge">● Live</span>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-ghost" onclick="refreshAll()">↻ Refresh</button>
+            <div class="auto-refresh">
+                <input type="checkbox" id="auto-refresh" checked>
+                <label for="auto-refresh">Auto-refresh (30s)</label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Summary Cards -->
+        <section class="summary-grid" id="summary-cards">
+            <div class="card stat-card">
+                <div class="stat-label">Total PnL</div>
+                <div class="stat-value" id="stat-total-pnl">—</div>
+                <div class="stat-sub"><span id="stat-realized">—</span> realized · <span id="stat-unrealized">—</span>
+                    unrealized</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">Paper Volume</div>
+                <div class="stat-value" id="stat-volume">—</div>
+                <div class="stat-sub"><span id="stat-paper-trades">—</span> fills</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">Avg Slippage</div>
+                <div class="stat-value" id="stat-slippage">—</div>
+                <div class="stat-sub">per share vs target</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">Avg Latency</div>
+                <div class="stat-value" id="stat-latency">—</div>
+                <div class="stat-sub">block → fill</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">Wallets Tracked</div>
+                <div class="stat-value" id="stat-wallets">—</div>
+                <div class="stat-sub"><span id="stat-target-trades">—</span> target trades seen</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">Positions</div>
+                <div class="stat-value" id="stat-positions">—</div>
+                <div class="stat-sub"><span id="stat-resolved">—</span> resolved</div>
+            </div>
+        </section>
+
+        <!-- Tabs -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="trades" onclick="switchTab('trades')">Trades</button>
+            <button class="tab" data-tab="wallets" onclick="switchTab('wallets')">Wallets</button>
+            <button class="tab" data-tab="positions" onclick="switchTab('positions')">Positions</button>
+            <button class="tab" data-tab="charts" onclick="switchTab('charts')">Charts</button>
+        </nav>
+
+        <!-- Trades Tab -->
+        <section class="tab-content active" id="tab-trades">
+            <div class="toolbar">
+                <div class="filter-group">
+                    <label>Wallet</label>
+                    <select id="filter-wallet" onchange="loadTrades()">
+                        <option value="">All Wallets</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select id="filter-resolved" onchange="loadTrades()">
+                        <option value="">All</option>
+                        <option value="unresolved">Unresolved</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Category</label>
+                    <select id="filter-category" onchange="loadTrades()">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="trades-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Wallet</th>
+                            <th>Market</th>
+                            <th>Category</th>
+                            <th>Side</th>
+                            <th>Target Price</th>
+                            <th>Paper Price</th>
+                            <th>Slippage</th>
+                            <th>Size (shares)</th>
+                            <th>Latency</th>
+                            <th>Status</th>
+                            <th>Book</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trades-tbody"></tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button class="btn btn-sm" id="trades-prev" onclick="tradesPrev()">← Prev</button>
+                <span id="trades-page-info">Page 1</span>
+                <button class="btn btn-sm" id="trades-next" onclick="tradesNext()">Next →</button>
+            </div>
+        </section>
+
+        <!-- Wallets Tab -->
+        <section class="tab-content" id="tab-wallets">
+            <div class="table-wrapper">
+                <table class="data-table" id="wallets-table">
+                    <thead>
+                        <tr>
+                            <th>Address</th>
+                            <th>Alias</th>
+                            <th>Source</th>
+                            <th>LB PnL</th>
+                            <th>LB Volume</th>
+                            <th>Trades Seen</th>
+                            <th>Paper Volume</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wallets-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Positions Tab -->
+        <section class="tab-content" id="tab-positions">
+            <div class="toolbar">
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select id="position-filter" onchange="loadPositions()">
+                        <option value="">All</option>
+                        <option value="0" selected>Open (Unresolved)</option>
+                        <option value="1">Resolved</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="positions-table">
+                    <thead>
+                        <tr>
+                            <th>Market</th>
+                            <th>Category</th>
+                            <th>Outcome</th>
+                            <th>Size</th>
+                            <th>Cost Basis</th>
+                            <th>Realized PnL</th>
+                            <th>Unrealized PnL</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positions-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Charts Tab -->
+        <section class="tab-content" id="tab-charts">
+            <div class="charts-grid">
+                <div class="card chart-card">
+                    <h3>Cumulative Cost Flow Over Time</h3>
+                    <canvas id="pnl-chart"></canvas>
+                </div>
+                <div class="card chart-card">
+                    <h3>Latency Distribution (last 200 trades)</h3>
+                    <canvas id="latency-chart"></canvas>
+                </div>
+                <div class="card chart-card">
+                    <h3>PnL Breakdown by Category</h3>
+                    <canvas id="category-pnl-chart"></canvas>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Order Book Modal -->
+    <div id="ob-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Order Book Snapshot</h3>
+                <button class="close-btn" onclick="closeModal('ob-modal')">&times;</button>
+            </div>
+            <div id="ob-modal-info" style="margin-bottom: 20px; font-size: 0.9em; opacity: 0.8;"></div>
+            <div class="ob-grid">
+                <div class="ob-side">
+                    <h4>Bids</h4>
+                    <table class="ob-table">
+                        <thead>
+                            <tr>
+                                <th>Price</th>
+                                <th>Size</th>
+                                <th>Total USD</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ob-bids-tbody"></tbody>
+                    </table>
+                </div>
+                <div class="ob-side">
+                    <h4>Asks</h4>
+                    <table class="ob-table">
+                        <thead>
+                            <tr>
+                                <th>Price</th>
+                                <th>Size</th>
+                                <th>Total USD</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ob-asks-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
