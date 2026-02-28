@@ -20,6 +20,30 @@ ssl_context = ssl._create_unverified_context()
 log = get_logger(__name__)
 
 
+class RunControl:
+    """Tracks optional run limits for live-trade capture."""
+
+    def __init__(self, max_trades: int = 0):
+        self.max_trades = max(0, int(max_trades or 0))
+        self.processed_trades = 0
+        self.stop_requested = False
+        self._lock = asyncio.Lock()
+
+    async def record_trade(self) -> bool:
+        """Record one processed trade; returns True only on the first limit hit."""
+        if self.max_trades <= 0:
+            return False
+        async with self._lock:
+            self.processed_trades += 1
+            if self.stop_requested:
+                return False
+            reached_limit = self.processed_trades >= self.max_trades
+            if reached_limit:
+                self.stop_requested = True
+                return True
+            return False
+
+
 # ── HTTP helpers ──────────────────────────────────────────────────
 
 def fetch_json(url: str) -> Optional[dict | list]:
@@ -105,7 +129,7 @@ def fetch_top_wallets(category: str, time_period: str, order_by: str, limit: int
 
 # ── Trade handler ─────────────────────────────────────────────────
 
-async def on_transaction(trade: TradeData, args: argparse.Namespace):
+async def on_transaction(trade: TradeData, args: argparse.Namespace, run_control: RunControl, monitor: TradeMonitor):
     detect_time = time.time()
     onchain_time = datetime.fromisoformat(trade.timestamp).timestamp()
 
@@ -131,7 +155,7 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace):
 
     # Now do all DB work in a separate thread to avoid blocking the event loop
     def db_work():
-        with db.transaction() as conn:
+        with db.transaction(db_path=args.db) as conn:
             if meta:
                 db.upsert_market(
                     conn, token_id,
@@ -282,10 +306,15 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace):
 
     await asyncio.to_thread(db_work)
 
+    reached_limit = await run_control.record_trade()
+    if reached_limit:
+        log.info(f"Reached max trade limit ({run_control.max_trades}). Stopping monitor.")
+        await monitor.stop()
 
-def check_missing_metadata():
+
+def check_missing_metadata(db_path: Optional[str] = None):
     """Polls the DB for markets with placeholder metadata and retries fetching them."""
-    with db.transaction() as conn:
+    with db.transaction(db_path=db_path) as conn:
         rows = conn.execute(
             """
             SELECT token_id
@@ -337,6 +366,8 @@ async def main():
                         help="Number of top wallets to fetch from leaderboard")
     parser.add_argument("--db", type=str, default=None,
                         help="Path to SQLite database file (default: paper_trades.db)")
+    parser.add_argument("--max-trades", type=int, default=0,
+                        help="Optional cap on detected trades to process before exiting (0 = unlimited)")
     parser.add_argument(
         "--run-resolution-inline",
         action="store_true",
@@ -392,11 +423,10 @@ async def main():
         db.set_state(conn, "paper_size", str(args.size))
 
     monitor = TradeMonitor()
-    monitor.on("transaction", partial(on_transaction, args=args))
+    run_control = RunControl(args.max_trades)
+    monitor.on("transaction", partial(on_transaction, args=args, run_control=run_control, monitor=monitor))
 
     try:
-        await monitor.start(target_wallets)
-
         if args.run_resolution_inline:
             resolution_worker = ResolutionWorker(db_path=args.db, poll_interval_seconds=1800)
             asyncio.create_task(resolution_worker.run())
@@ -409,13 +439,12 @@ async def main():
         async def metadata_backfill_loop():
             while True:
                 # Check for missing metadata every 10 minutes
-                await asyncio.to_thread(check_missing_metadata)
+                await asyncio.to_thread(check_missing_metadata, args.db)
                 await asyncio.sleep(600)
 
         asyncio.create_task(metadata_backfill_loop())
 
-        while True:
-            await asyncio.sleep(1)
+        await monitor.start(target_wallets)
     except KeyboardInterrupt:
         await monitor.stop()
         log.info("Monitor stopped gracefully.")

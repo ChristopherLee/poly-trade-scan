@@ -278,7 +278,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         query = """
             SELECT p.token_id, p.size, p.cost_basis, p.realized_pnl, p.updated_at,
                    m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category, m.group_item_title, m.slug,
-                   (SELECT pt.avg_price FROM paper_trades pt WHERE pt.token_id = p.token_id ORDER BY pt.created_at DESC LIMIT 1) as last_price
+                   (SELECT pt.avg_price FROM paper_trades pt WHERE pt.token_id = p.token_id ORDER BY pt.created_at DESC LIMIT 1) as last_price,
+                   (SELECT COUNT(DISTINCT tt.wallet)
+                    FROM paper_trades pt
+                    JOIN target_trades tt ON tt.id = pt.target_trade_id
+                    WHERE pt.token_id = p.token_id) as source_wallet_count,
+                   (SELECT GROUP_CONCAT(DISTINCT tt.wallet)
+                    FROM paper_trades pt
+                    JOIN target_trades tt ON tt.id = pt.target_trade_id
+                    WHERE pt.token_id = p.token_id) as source_wallets
             FROM positions p
             LEFT JOIN markets m ON m.token_id = p.token_id
             WHERE 1=1

@@ -248,6 +248,21 @@ function filterByWallet(addr) {
     loadTrades();
 }
 
+function viewTradesForToken(tokenId) {
+    if (!tokenId) return;
+    tradesPage = 0;
+    document.getElementById('filter-token').value = tokenId;
+    switchTab('trades');
+    loadTrades();
+}
+
+function goToPosition(tokenId) {
+    if (!tokenId) return;
+    document.getElementById('position-search').value = tokenId;
+    switchTab('positions');
+    loadPositions();
+}
+
 function predictedDirectionLabel(side, outcomes, outcomeIdx) {
     const selectedOutcome = outcomes?.[outcomeIdx] || '?';
     if (side === 'BUY') {
@@ -269,10 +284,12 @@ async function loadTrades() {
     const slippageFilter = document.getElementById('filter-slippage').value;
     const latencyFilter = document.getElementById('filter-latency').value;
     const search = document.getElementById('filter-search').value.trim().toLowerCase();
+    const tokenFilter = document.getElementById('filter-token').value.trim();
 
     let url = `/api/trades?limit=${PAGE_SIZE}&offset=${tradesPage * PAGE_SIZE}`;
     if (wallet) url += `&wallet=${wallet}`;
     if (category) url += `&category=${category}`;
+    if (tokenFilter) url += `&token_id=${encodeURIComponent(tokenFilter)}`;
 
     const data = await api(url);
     if (!data) return;
@@ -281,6 +298,7 @@ async function loadTrades() {
     if (resolved === 'resolved') filtered = filtered.filter(t => t.resolved);
     if (resolved === 'unresolved') filtered = filtered.filter(t => !t.resolved);
     if (category) filtered = filtered.filter(t => t.category === category);
+    if (tokenFilter) filtered = filtered.filter(t => t.token_id === tokenFilter);
     if (side) filtered = filtered.filter(t => t.side === side);
     if (fillStatus === 'filled') filtered = filtered.filter(t => (t.paper_size || 0) > 0);
     if (fillStatus === 'nofill') filtered = filtered.filter(t => (t.paper_size || 0) <= 0 || Boolean(t.no_fill_reason));
@@ -344,6 +362,7 @@ async function loadTrades() {
             <td class="mono">${(t.paper_size || 0).toFixed(1)}</td>
             <td class="mono">${t.total_delay_ms != null ? t.total_delay_ms.toFixed(0) + 'ms' : '—'}</td>
             <td>${statusBadge}</td>
+            <td><button class="btn btn-sm" onclick="goToPosition('${t.token_id}')">Open</button></td>
             <td><button class="btn btn-sm btn-ghost" onclick="openOrderBook(${t.target_id})">📖</button></td>
         </tr>`;
     }).join('');
@@ -410,16 +429,24 @@ async function loadPositions() {
             ? `<a href="https://polymarket.com/event/${p.slug}" target="_blank" class="market-link">${question.slice(0, 55)}${question.length > 55 ? '…' : ''}</a>`
             : `${question.slice(0, 55)}${question.length > 55 ? '…' : ''}`;
 
+        const sourceWallets = (p.source_wallets || '').split(',').filter(Boolean);
+        const walletBadges = sourceWallets.slice(0, 2)
+            .map(addr => `<span class="badge" style="background:var(--bg-card); border:1px solid var(--border)">${fmtAddr(addr)}</span>`)
+            .join(' ');
+        const extraWallets = sourceWallets.length > 2 ? ` <small style="color:var(--text-muted)">+${sourceWallets.length - 2} more</small>` : '';
+
         return `
         <tr>
             <td class="truncate" title="${question}">${marketLink}</td>
             <td><span class="badge" style="background:var(--bg-card); border:1px solid var(--border)">${p.category || 'Other'}</span></td>
             <td>${outcomeLabel}</td>
+            <td>${walletBadges || '—'}${extraWallets}</td>
             <td class="mono">${p.size.toFixed(2)}</td>
             <td class="mono">$${p.cost_basis.toFixed(2)}</td>
             <td class="mono ${pnlClass(p.realized_pnl)}">${fmt$(p.realized_pnl)}</td>
             <td class="mono ${pnlClass(p.unrealized_pnl)}">${fmt$(p.unrealized_pnl)}</td>
             <td>${statusBadge}</td>
+            <td><button class="btn btn-sm" onclick="viewTradesForToken('${p.token_id}')">View</button></td>
         </tr>`;
     }).join('');
 }
