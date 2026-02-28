@@ -99,6 +99,44 @@
                         <option value="">All Categories</option>
                     </select>
                 </div>
+                <div class="filter-group">
+                    <label>Side</label>
+                    <select id="filter-side" onchange="loadTrades()">
+                        <option value="">All Sides</option>
+                        <option value="BUY">BUY</option>
+                        <option value="SELL">SELL</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Fill</label>
+                    <select id="filter-fill" onchange="loadTrades()">
+                        <option value="">All</option>
+                        <option value="filled">Filled</option>
+                        <option value="nofill">No Fill</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Slippage</label>
+                    <select id="filter-slippage" onchange="loadTrades()">
+                        <option value="">Any</option>
+                        <option value="adverse">Adverse (&gt; 0)</option>
+                        <option value="favorable">Favorable (&lt; 0)</option>
+                        <option value="high">High Abs (≥ 0.02)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Latency</label>
+                    <select id="filter-latency" onchange="loadTrades()">
+                        <option value="">Any</option>
+                        <option value="fast">Fast (&lt; 500ms)</option>
+                        <option value="medium">Medium (500-2000ms)</option>
+                        <option value="slow">Slow (&gt; 2000ms)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search</label>
+                    <input id="filter-search" type="text" placeholder="Market / outcome / wallet" oninput="loadTrades()" />
+                </div>
             </div>
             <div class="table-wrapper">
                 <table class="data-table" id="trades-table">
@@ -109,6 +147,7 @@
                             <th>Market</th>
                             <th>Category</th>
                             <th>Side</th>
+                            <th>Predicted Direction</th>
                             <th>Target Price</th>
                             <th>Paper Price</th>
                             <th>Slippage</th>
@@ -159,6 +198,25 @@
                         <option value="0" selected>Open (Unresolved)</option>
                         <option value="1">Resolved</option>
                     </select>
+                </div>
+                <div class="filter-group">
+                    <label>Category</label>
+                    <select id="position-category" onchange="loadPositions()">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>PnL</label>
+                    <select id="position-pnl" onchange="loadPositions()">
+                        <option value="">Any</option>
+                        <option value="winners">Winners (Realized + Unrealized &gt; 0)</option>
+                        <option value="losers">Losers (Realized + Unrealized &lt; 0)</option>
+                        <option value="flat">Flat (≈ 0)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Search</label>
+                    <input id="position-search" type="text" placeholder="Market / outcome" oninput="loadPositions()" />
                 </div>
             </div>
             <div class="table-wrapper">

@@ -240,9 +240,18 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace):
                     pos["size"] += shares_filled
                 elif side_str == "SELL" and pos["size"] > 0:
                     avg_entry = pos["cost_basis"] / pos["size"]
-                    pos["realized_pnl"] += shares_filled * (avg_paper_price - avg_entry)
-                    pos["size"] -= shares_filled
-                    pos["cost_basis"] -= shares_filled * avg_entry
+                    shares_to_close = min(shares_filled, pos["size"])
+                    pos["realized_pnl"] += shares_to_close * (avg_paper_price - avg_entry)
+                    pos["size"] -= shares_to_close
+                    pos["cost_basis"] -= shares_to_close * avg_entry
+
+                    if shares_filled > shares_to_close:
+                        log.warning(
+                            "Paper SELL filled more shares than held; capping position close",
+                            token_id=token_id,
+                            shares_filled=round(shares_filled, 6),
+                            shares_closed=round(shares_to_close, 6),
+                        )
                     if pos["size"] <= 0.0001:
                         pos["size"] = 0
                         pos["cost_basis"] = 0
