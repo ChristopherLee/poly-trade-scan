@@ -456,24 +456,30 @@ async def main():
                     target_wallets.append(w)
             log.info(f"Loaded {len(target_wallets)} wallets from CLI.")
         else:
-            if args.category:
-                cats_to_fetch = [c.strip().upper() for c in args.category.split(",") if c.strip()]
+            target_wallets = db.get_enabled_wallets(conn)
+            if target_wallets:
+                log.info(f"Loaded {len(target_wallets)} tracking-enabled wallets from DB.")
             else:
-                # Optimized categories based on current Polymarket Data API support
-                cats_to_fetch = ["politics", "sports", "crypto", "finance", "culture", "mentions", "weather", "economics", "tech", "overall"]
+                if args.category:
+                    cats_to_fetch = [c.strip().upper() for c in args.category.split(",") if c.strip()]
+                else:
+                    # Optimized categories based on current Polymarket Data API support
+                    cats_to_fetch = ["politics", "sports", "crypto", "finance", "culture", "mentions", "weather", "economics", "tech", "overall"]
 
-            seen_addresses = set()
-            for cat in cats_to_fetch:
-                # Ensure category is lowercase for API compatibility
-                wallet_data = fetch_top_wallets(cat.lower(), args.time_period.upper(), args.order_by.upper(), args.limit)
-                for wd in wallet_data:
-                    addr = wd["address"]
-                    if addr not in seen_addresses:
-                        db.upsert_wallet(conn, addr, alias=wd["alias"],
-                                         source=f"leaderboard:{cat}", pnl=wd["pnl"], vol=wd["vol"])
-                        target_wallets.append(addr)
-                        seen_addresses.add(addr)
-            log.info(f"Loaded {len(target_wallets)} unique wallets from {len(cats_to_fetch)} leaderboards.")
+                seen_addresses = set()
+                for cat in cats_to_fetch:
+                    # Ensure category is lowercase for API compatibility
+                    wallet_data = fetch_top_wallets(cat.lower(), args.time_period.upper(), args.order_by.upper(), args.limit)
+                    for wd in wallet_data:
+                        addr = wd["address"]
+                        if addr not in seen_addresses:
+                            db.upsert_wallet(conn, addr, alias=wd["alias"],
+                                             source=f"leaderboard:{cat}", pnl=wd["pnl"], vol=wd["vol"])
+                            target_wallets.append(addr)
+                            seen_addresses.add(addr)
+                log.info(
+                    f"No wallets were enabled yet. Seeded {len(target_wallets)} wallets from {len(cats_to_fetch)} leaderboards."
+                )
 
         if not target_wallets:
             log.error("No target wallets to monitor!")

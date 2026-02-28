@@ -4,11 +4,39 @@ import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
+import urllib.request
 
-from src.db import get_connection
+from src.db import get_connection, init_db
 
 STATIC_DIR = Path(__file__).parent / "dashboard"
 PORT = 8050
+
+
+def fetch_json(url: str):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.loads(resp.read())
+
+
+def fetch_leaderboard(category: str, time_period: str, order_by: str, limit: int):
+    url = (
+        "https://data-api.polymarket.com/v1/leaderboard"
+        f"?category={category}&timePeriod={time_period}&orderBy={order_by}&limit={limit}"
+    )
+    data = fetch_json(url) or []
+    results = []
+    for user in data:
+        addr = user.get("proxyWallet") or user.get("address") or user.get("wallet")
+        if not addr:
+            continue
+        results.append({
+            "address": addr.lower(),
+            "alias": user.get("userName", ""),
+            "pnl": user.get("pnl", 0),
+            "vol": user.get("vol", 0),
+            "category": category,
+        })
+    return results
 
 
 class DashboardHandler(SimpleHTTPRequestHandler):
@@ -26,6 +54,33 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self._handle_api(path, params)
         else:
             super().do_GET()
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if not path.startswith("/api/"):
+            self._json_response({"error": "not found"}, 404)
+            return
+
+        content_len = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(content_len) if content_len else b"{}"
+        try:
+            payload = json.loads(raw.decode() or "{}")
+        except Exception:
+            self._json_response({"error": "invalid json body"}, 400)
+            return
+
+        conn = get_connection()
+        try:
+            if path == "/api/wallets":
+                self._api_add_wallet(conn, payload)
+            elif path == "/api/wallets/toggle":
+                self._api_toggle_wallet(conn, payload)
+            else:
+                self._json_response({"error": "not found"}, 404)
+        finally:
+            conn.close()
 
     def _json_response(self, data, status=200):
         body = json.dumps(data, default=str).encode()
@@ -57,6 +112,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self._api_orderbook(conn, params)
             elif path == "/api/latency_stats":
                 self._api_latency_stats(conn)
+            elif path == "/api/leaderboard":
+                self._api_leaderboard(params)
             else:
                 self._json_response({"error": "not found"}, 404)
         finally:
@@ -65,7 +122,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def _api_summary(self, conn):
         total_target = conn.execute("SELECT COUNT(*) as c FROM target_trades").fetchone()["c"]
         total_paper = conn.execute("SELECT COUNT(*) as c FROM paper_trades").fetchone()["c"]
-        total_wallets = conn.execute("SELECT COUNT(*) as c FROM wallets").fetchone()["c"]
+        total_wallets = conn.execute("SELECT COUNT(*) as c FROM wallets WHERE tracking_enabled = 1").fetchone()["c"]
 
         resolved = conn.execute("SELECT COUNT(*) as c FROM markets WHERE resolved = 1").fetchone()["c"]
         unresolved_positions = conn.execute(
@@ -113,9 +170,61 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                    (SELECT COALESCE(SUM(pt.cost_usd), 0) FROM paper_trades pt
                     JOIN target_trades tt ON pt.target_trade_id = tt.id
                     WHERE tt.wallet = w.address) as paper_volume
-            FROM wallets w ORDER BY w.leaderboard_pnl DESC
+            FROM wallets w
+            ORDER BY w.tracking_enabled DESC, COALESCE(w.enabled_at, w.added_at) DESC, w.leaderboard_pnl DESC
         """).fetchall()
         self._json_response([dict(r) for r in rows])
+
+    def _api_add_wallet(self, conn, payload):
+        address = (payload.get("address") or "").strip().lower()
+        alias = (payload.get("alias") or "").strip()
+
+        if not address:
+            self._json_response({"error": "address is required"}, 400)
+            return
+
+        conn.execute(
+            """
+            INSERT INTO wallets (address, alias, source, leaderboard_pnl, leaderboard_vol, added_at, tracking_enabled, enabled_at, disabled_at)
+            VALUES (?, ?, 'manual', 0, 0, ?, 1, ?, NULL)
+            ON CONFLICT(address) DO UPDATE SET
+                alias = CASE WHEN excluded.alias != '' THEN excluded.alias ELSE wallets.alias END,
+                source = 'manual',
+                tracking_enabled = 1,
+                enabled_at = CASE WHEN wallets.tracking_enabled = 0 THEN excluded.enabled_at ELSE COALESCE(wallets.enabled_at, excluded.enabled_at) END,
+                disabled_at = NULL
+            """,
+            (address, alias, time.time(), time.time()),
+        )
+        conn.commit()
+        self._json_response({"ok": True, "address": address})
+
+    def _api_toggle_wallet(self, conn, payload):
+        address = (payload.get("address") or "").strip().lower()
+        enabled = payload.get("enabled")
+
+        if not address or not isinstance(enabled, bool):
+            self._json_response({"error": "address and enabled(bool) are required"}, 400)
+            return
+
+        now = time.time()
+        updated = conn.execute(
+            """
+            UPDATE wallets
+            SET tracking_enabled = ?,
+                enabled_at = CASE WHEN ? = 1 THEN ? ELSE enabled_at END,
+                disabled_at = CASE WHEN ? = 0 THEN ? ELSE NULL END
+            WHERE address = ?
+            """,
+            (1 if enabled else 0, 1 if enabled else 0, now, 1 if enabled else 0, now, address),
+        )
+        conn.commit()
+
+        if updated.rowcount == 0:
+            self._json_response({"error": "wallet not found"}, 404)
+            return
+
+        self._json_response({"ok": True, "address": address, "tracking_enabled": enabled})
 
     def _api_trades(self, conn, params):
         wallet = params.get("wallet", [None])[0]
@@ -321,12 +430,27 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """).fetchall()
         self._json_response([dict(r) for r in rows])
 
+    def _api_leaderboard(self, params):
+        category = (params.get("category", ["overall"])[0] or "overall").lower()
+        time_period = (params.get("time_period", ["MONTH"])[0] or "MONTH").upper()
+        order_by = (params.get("order_by", ["PNL"])[0] or "PNL").upper()
+        limit = min(max(int(params.get("limit", [20])[0]), 1), 100)
+
+        try:
+            rows = fetch_leaderboard(category, time_period, order_by, limit)
+        except Exception as exc:
+            self._json_response({"error": f"leaderboard fetch failed: {exc}"}, 502)
+            return
+
+        self._json_response(rows)
+
     def log_message(self, format, *args):
         """Suppress default access logs for cleaner output."""
         pass
 
 
 def main():
+    init_db()
     STATIC_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Dashboard running at http://localhost:{PORT}")
     server = HTTPServer(("0.0.0.0", PORT), DashboardHandler)

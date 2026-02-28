@@ -10,6 +10,7 @@ let autoRefreshTimer = null;
 document.addEventListener('DOMContentLoaded', () => {
     refreshAll();
     setupAutoRefresh();
+    loadLeaderboardWallets();
 });
 
 function setupAutoRefresh() {
@@ -32,6 +33,23 @@ async function api(path) {
         return await resp.json();
     } catch (e) {
         console.error(`API error: ${path}`, e);
+        return null;
+    }
+}
+
+async function apiPost(path, payload) {
+    try {
+        const resp = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload || {}),
+        });
+        const body = await resp.json();
+        if (!resp.ok) throw new Error(body.error || `HTTP ${resp.status}`);
+        return body;
+    } catch (e) {
+        console.error(`API error: ${path}`, e);
+        alert(e.message || 'Request failed');
         return null;
     }
 }
@@ -104,11 +122,11 @@ async function loadWallets() {
     const data = await api('/api/wallets');
     if (!data) return;
 
-    // Populate filter dropdown
+    // Populate filter dropdown with actively tracked wallets
     const select = document.getElementById('filter-wallet');
     const current = select.value;
     select.innerHTML = '<option value="">All Wallets</option>';
-    data.forEach(w => {
+    data.filter(w => w.tracking_enabled).forEach(w => {
         const opt = document.createElement('option');
         opt.value = w.address;
         opt.textContent = w.alias ? `${w.alias} (${fmtAddr(w.address)})` : fmtAddr(w.address);
@@ -116,18 +134,90 @@ async function loadWallets() {
     });
     select.value = current;
 
-    // Table
     const tbody = document.getElementById('wallets-tbody');
-    tbody.innerHTML = data.map(w => `
+    tbody.innerHTML = data.map(w => {
+        const trackingBadge = w.tracking_enabled
+            ? `<span class="badge badge-buy">Enabled</span>`
+            : `<span class="badge badge-sell">Disabled</span>`;
+
+        return `
         <tr>
             <td class="mono">${fmtAddr(w.address)}</td>
             <td>${w.alias || '—'}</td>
-            <td><span class="badge ${w.source === 'leaderboard' ? 'badge-resolved' : 'badge-open'}">${w.source}</span></td>
+            <td><span class="badge ${w.source && w.source.startsWith('leaderboard') ? 'badge-resolved' : 'badge-open'}">${w.source || 'manual'}</span></td>
+            <td>${trackingBadge}</td>
+            <td>${fmtTime(w.enabled_at)}</td>
+            <td>${fmtTime(w.disabled_at)}</td>
             <td class="${pnlClass(w.leaderboard_pnl)}">${fmt$(w.leaderboard_pnl)}</td>
             <td>$${(w.leaderboard_vol || 0).toLocaleString()}</td>
             <td>${w.trade_count}</td>
             <td>$${(w.paper_volume || 0).toFixed(2)}</td>
-            <td><button class="btn btn-sm" onclick="filterByWallet('${w.address}')">View Trades</button></td>
+            <td>
+                <button class="btn btn-sm" onclick="filterByWallet('${w.address}')">View Trades</button>
+                <button class="btn btn-sm ${w.tracking_enabled ? 'btn-ghost' : 'btn-accent'}" onclick="toggleWalletTracking('${w.address}', ${w.tracking_enabled ? 'false' : 'true'})">${w.tracking_enabled ? 'Disable' : 'Enable'}</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function addWallet() {
+    const addrInput = document.getElementById('wallet-address-input');
+    const aliasInput = document.getElementById('wallet-alias-input');
+    const address = addrInput.value.trim();
+    const alias = aliasInput.value.trim();
+
+    if (!address) {
+        alert('Wallet address is required');
+        return;
+    }
+
+    const resp = await apiPost('/api/wallets', { address, alias });
+    if (!resp) return;
+
+    addrInput.value = '';
+    aliasInput.value = '';
+    await loadWallets();
+    await loadSummary();
+}
+
+async function toggleWalletTracking(address, enabled) {
+    const resp = await apiPost('/api/wallets/toggle', { address, enabled });
+    if (!resp) return;
+    await loadWallets();
+    await loadSummary();
+}
+
+async function addOrEnableWallet(address, alias = '') {
+    const resp = await apiPost('/api/wallets', { address, alias });
+    if (!resp) return;
+    await loadWallets();
+    await loadSummary();
+}
+
+async function loadLeaderboardWallets() {
+    const category = document.getElementById('leaderboard-category').value;
+    const timePeriod = document.getElementById('leaderboard-time-period').value;
+    const orderBy = document.getElementById('leaderboard-order-by').value;
+    const limit = document.getElementById('leaderboard-limit').value || 20;
+
+    const data = await api(`/api/leaderboard?category=${category}&time_period=${timePeriod}&order_by=${orderBy}&limit=${limit}`);
+    const tbody = document.getElementById('leaderboard-wallets-tbody');
+    if (!data) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Failed to load leaderboard.</td></tr>';
+        return;
+    }
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No wallets found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.map(w => `
+        <tr>
+            <td class="mono">${fmtAddr(w.address)}</td>
+            <td>${w.alias || '—'}</td>
+            <td class="${pnlClass(w.pnl || 0)}">${fmt$(Number(w.pnl || 0))}</td>
+            <td>$${Number(w.vol || 0).toLocaleString()}</td>
+            <td><button class="btn btn-sm btn-accent" onclick="addOrEnableWallet('${w.address}', ${JSON.stringify(w.alias || '')})">Track</button></td>
         </tr>
     `).join('');
 }
