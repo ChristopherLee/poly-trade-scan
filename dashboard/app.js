@@ -662,3 +662,20 @@ window.onclick = function (event) {
         event.target.style.display = 'none';
     }
 }
+
+// Ensure functions invoked via inline HTML handlers are available globally.
+Object.assign(window, {
+    addOrEnableWallet,
+    addWallet,
+    closeModal,
+    filterByWallet,
+    goToPosition,
+    loadLeaderboardWallets,
+    openOrderBook,
+    refreshAll,
+    switchTab,
+    toggleWalletTracking,
+    tradesNext,
+    tradesPrev,
+    viewTradesForToken,
+});
