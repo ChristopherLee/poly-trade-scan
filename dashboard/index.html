@@ -169,6 +169,74 @@
 
         <!-- Wallets Tab -->
         <section class="tab-content" id="tab-wallets">
+            <div class="toolbar">
+                <div class="filter-group">
+                    <label>Wallet Address</label>
+                    <input id="wallet-address-input" placeholder="0x..." />
+                </div>
+                <div class="filter-group">
+                    <label>Alias (optional)</label>
+                    <input id="wallet-alias-input" placeholder="Whale name" />
+                </div>
+                <button class="btn btn-accent" onclick="addWallet()">+ Add Wallet</button>
+            </div>
+
+            <div class="card" style="margin-bottom: 1rem;">
+                <div class="toolbar" style="margin-bottom:0;">
+                    <div class="filter-group">
+                        <label>Leaderboard Category</label>
+                        <select id="leaderboard-category">
+                            <option value="overall">Overall</option>
+                            <option value="politics">Politics</option>
+                            <option value="sports">Sports</option>
+                            <option value="crypto">Crypto</option>
+                            <option value="finance">Finance</option>
+                            <option value="culture">Culture</option>
+                            <option value="mentions">Mentions</option>
+                            <option value="weather">Weather</option>
+                            <option value="economics">Economics</option>
+                            <option value="tech">Tech</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Time Period</label>
+                        <select id="leaderboard-time-period">
+                            <option value="DAY">Day</option>
+                            <option value="WEEK">Week</option>
+                            <option value="MONTH" selected>Month</option>
+                            <option value="ALL">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Order By</label>
+                        <select id="leaderboard-order-by">
+                            <option value="PNL" selected>PnL</option>
+                            <option value="VOL">Volume</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Limit</label>
+                        <input id="leaderboard-limit" type="number" min="1" max="100" value="20" />
+                    </div>
+                    <button class="btn" onclick="loadLeaderboardWallets()">Load Leaderboard</button>
+                </div>
+                <div class="table-wrapper" style="margin-top: 1rem;">
+                    <table class="data-table" id="leaderboard-wallets-table">
+                        <thead>
+                            <tr>
+                                <th>Address</th>
+                                <th>Alias</th>
+                                <th>PnL</th>
+                                <th>Volume</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-wallets-tbody">
+                            <tr><td colspan="5" style="text-align:center;">Load a leaderboard to see wallets.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <div class="table-wrapper">
                 <table class="data-table" id="wallets-table">
                     <thead>
@@ -176,6 +244,9 @@
                             <th>Address</th>
                             <th>Alias</th>
                             <th>Source</th>
+                            <th>Tracking</th>
+                            <th>Enabled At</th>
+                            <th>Disabled At</th>
                             <th>LB PnL</th>
                             <th>LB Volume</th>
                             <th>Trades Seen</th>

@@ -54,7 +54,10 @@ def init_db(db_path: Optional[str] = None) -> None:
         source          TEXT,           -- 'leaderboard' or 'manual'
         leaderboard_pnl REAL DEFAULT 0,
         leaderboard_vol REAL DEFAULT 0,
-        added_at        REAL            -- epoch
+        added_at        REAL,           -- epoch
+        tracking_enabled INTEGER DEFAULT 1,
+        enabled_at      REAL,
+        disabled_at     REAL
     );
 
     CREATE TABLE IF NOT EXISTS markets (
@@ -194,6 +197,30 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE markets ADD COLUMN group_item_title TEXT")
         conn.commit()
 
+    wallet_cols = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(wallets)").fetchall()
+    }
+    if "tracking_enabled" not in wallet_cols:
+        conn.execute("ALTER TABLE wallets ADD COLUMN tracking_enabled INTEGER DEFAULT 1")
+        conn.commit()
+    if "enabled_at" not in wallet_cols:
+        conn.execute("ALTER TABLE wallets ADD COLUMN enabled_at REAL")
+        conn.commit()
+    if "disabled_at" not in wallet_cols:
+        conn.execute("ALTER TABLE wallets ADD COLUMN disabled_at REAL")
+        conn.commit()
+
+    conn.execute(
+        """
+        UPDATE wallets
+        SET enabled_at = COALESCE(enabled_at, added_at, ?)
+        WHERE tracking_enabled = 1
+        """,
+        (time.time(),),
+    )
+    conn.commit()
+
     existing_tables = {
         row[0]
         for row in conn.execute(
@@ -227,15 +254,47 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
 def upsert_wallet(conn: sqlite3.Connection, address: str, alias: str = "",
                   source: str = "manual", pnl: float = 0, vol: float = 0) -> None:
+    now = time.time()
     conn.execute("""
-        INSERT INTO wallets (address, alias, source, leaderboard_pnl, leaderboard_vol, added_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO wallets (address, alias, source, leaderboard_pnl, leaderboard_vol, added_at, tracking_enabled, enabled_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?)
         ON CONFLICT(address) DO UPDATE SET
-            alias = excluded.alias,
+            alias = CASE WHEN excluded.alias != '' THEN excluded.alias ELSE wallets.alias END,
+            source = excluded.source,
             leaderboard_pnl = excluded.leaderboard_pnl,
             leaderboard_vol = excluded.leaderboard_vol
-    """, (address.lower(), alias, source, pnl, vol, time.time()))
+    """, (address.lower(), alias, source, pnl, vol, now, now))
+    conn.execute(
+        """
+        UPDATE wallets
+        SET enabled_at = COALESCE(enabled_at, ?)
+        WHERE address = ? AND tracking_enabled = 1
+        """,
+        (now, address.lower()),
+    )
     conn.commit()
+
+
+def set_wallet_tracking(conn: sqlite3.Connection, address: str, enabled: bool) -> None:
+    now = time.time()
+    conn.execute(
+        """
+        UPDATE wallets
+        SET tracking_enabled = ?,
+            enabled_at = CASE WHEN ? = 1 THEN COALESCE(enabled_at, ?) ELSE enabled_at END,
+            disabled_at = CASE WHEN ? = 0 THEN ? ELSE NULL END
+        WHERE address = ?
+        """,
+        (1 if enabled else 0, 1 if enabled else 0, now, 1 if enabled else 0, now, address.lower()),
+    )
+    conn.commit()
+
+
+def get_enabled_wallets(conn: sqlite3.Connection) -> list[str]:
+    rows = conn.execute(
+        "SELECT address FROM wallets WHERE tracking_enabled = 1 ORDER BY COALESCE(enabled_at, added_at) ASC"
+    ).fetchall()
+    return [row["address"] for row in rows]
 
 
 # ── Market helpers ────────────────────────────────────────────────
