@@ -1,17 +1,95 @@
-// ── State ─────────────────────────────────────────────────────────
+﻿// â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let tradesPage = 0;
 const PAGE_SIZE = 50;
+let lastTradeFilterKey = '';
 let pnlChart = null;
 let latencyChart = null;
 let categoryPnlChart = null;
 let autoRefreshTimer = null;
+let leaderboardWalletCache = [];
+const TRADES_COLUMN_WIDTH_STORAGE_KEY = 'trades_column_widths_v1';
+const TRADES_COLUMN_WIDTH_VARS = {
+    time: '--trades-col-time',
+    wallet: '--trades-col-wallet',
+    market: '--trades-col-market',
+    category: '--trades-col-category',
+    side: '--trades-col-side',
+    predicted: '--trades-col-predicted',
+    targetPrice: '--trades-col-target-price',
+    paperPrice: '--trades-col-paper-price',
+    slippage: '--trades-col-slippage',
+    size: '--trades-col-size',
+    latency: '--trades-col-latency',
+    status: '--trades-col-status',
+    position: '--trades-col-position',
+    book: '--trades-col-book',
+};
 
-// ── Init ──────────────────────────────────────────────────────────
+// â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.addEventListener('DOMContentLoaded', () => {
+    applyTradesColumnWidths();
     refreshAll();
     setupAutoRefresh();
     loadLeaderboardWallets();
 });
+
+function normalizeWidthValue(value) {
+    if (value == null) return null;
+    const normalized = String(value).trim();
+    if (!normalized) return null;
+    if (/^\d+$/.test(normalized)) return `${normalized}px`;
+    return normalized;
+}
+
+function readStoredTradesColumnWidths() {
+    try {
+        const raw = localStorage.getItem(TRADES_COLUMN_WIDTH_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function applyTradesColumnWidths() {
+    const rootStyle = document.documentElement.style;
+    const widths = readStoredTradesColumnWidths();
+
+    for (const [key, cssVarName] of Object.entries(TRADES_COLUMN_WIDTH_VARS)) {
+        const normalized = normalizeWidthValue(widths[key]);
+        if (normalized) {
+            rootStyle.setProperty(cssVarName, normalized);
+        }
+    }
+}
+
+function setTradesColumnWidths(nextWidths) {
+    if (!nextWidths || typeof nextWidths !== 'object') return;
+
+    const current = readStoredTradesColumnWidths();
+    const merged = { ...current };
+
+    for (const key of Object.keys(TRADES_COLUMN_WIDTH_VARS)) {
+        if (!(key in nextWidths)) continue;
+        const normalized = normalizeWidthValue(nextWidths[key]);
+        if (normalized) {
+            merged[key] = normalized;
+        } else {
+            delete merged[key];
+        }
+    }
+
+    localStorage.setItem(TRADES_COLUMN_WIDTH_STORAGE_KEY, JSON.stringify(merged));
+    applyTradesColumnWidths();
+}
+
+function resetTradesColumnWidths() {
+    localStorage.removeItem(TRADES_COLUMN_WIDTH_STORAGE_KEY);
+    for (const cssVarName of Object.values(TRADES_COLUMN_WIDTH_VARS)) {
+        document.documentElement.style.removeProperty(cssVarName);
+    }
+}
 
 function setupAutoRefresh() {
     const cb = document.getElementById('auto-refresh');
@@ -25,7 +103,7 @@ function setupAutoRefresh() {
     autoRefreshTimer = setInterval(refreshAll, 30000);
 }
 
-// ── API helpers ───────────────────────────────────────────────────
+// â”€â”€ API helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function api(path) {
     try {
         const resp = await fetch(path);
@@ -54,20 +132,20 @@ async function apiPost(path, payload) {
     }
 }
 
-// ── Formatters ────────────────────────────────────────────────────
+// â”€â”€ Formatters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function fmt$(v, decimals = 2) {
-    if (v == null || isNaN(v)) return '—';
+    if (v == null || isNaN(v)) return 'â€”';
     const sign = v >= 0 ? '+' : '';
     return `${sign}$${v.toFixed(decimals)}`;
 }
 
 function fmtAddr(addr) {
-    if (!addr) return '—';
-    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+    if (!addr) return 'â€”';
+    return `${addr.slice(0, 6)}â€¦${addr.slice(-4)}`;
 }
 
 function fmtTime(epoch) {
-    if (!epoch) return '—';
+    if (!epoch) return 'â€”';
     const d = new Date(epoch * 1000);
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
@@ -84,7 +162,7 @@ function pnlStatClass(v) {
     return '';
 }
 
-// ── Refresh All ───────────────────────────────────────────────────
+// â”€â”€ Refresh All â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function refreshAll() {
     await Promise.all([
         loadSummary(),
@@ -92,11 +170,16 @@ async function refreshAll() {
         loadCategories(),
         loadTrades(),
         loadPositions(),
-        loadCharts(),
     ]);
+
+    // Only load chart endpoints when charts tab is visible.
+    const chartsTab = document.getElementById('tab-charts');
+    if (chartsTab && chartsTab.classList.contains('active')) {
+        await loadCharts();
+    }
 }
 
-// ── Summary ───────────────────────────────────────────────────────
+// â”€â”€ Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadSummary() {
     const d = await api('/api/summary');
     if (!d) return;
@@ -117,16 +200,17 @@ async function loadSummary() {
     document.getElementById('stat-resolved').textContent = d.resolved_markets;
 }
 
-// ── Wallets ───────────────────────────────────────────────────────
+// â”€â”€ Wallets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadWallets() {
     const data = await api('/api/wallets');
     if (!data) return;
+    const trackedWallets = data.filter(w => w.tracking_enabled);
 
     // Populate filter dropdown with actively tracked wallets
     const select = document.getElementById('filter-wallet');
     const current = select.value;
     select.innerHTML = '<option value="">All Wallets</option>';
-    data.filter(w => w.tracking_enabled).forEach(w => {
+    trackedWallets.forEach(w => {
         const opt = document.createElement('option');
         opt.value = w.address;
         opt.textContent = w.alias ? `${w.alias} (${fmtAddr(w.address)})` : fmtAddr(w.address);
@@ -135,15 +219,22 @@ async function loadWallets() {
     select.value = current;
 
     const tbody = document.getElementById('wallets-tbody');
-    tbody.innerHTML = data.map(w => {
+    if (!trackedWallets.length) {
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;">No tracked wallets yet.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = trackedWallets.map(w => {
         const trackingBadge = w.tracking_enabled
             ? `<span class="badge badge-buy">Enabled</span>`
             : `<span class="badge badge-sell">Disabled</span>`;
+        const profileUrl = `https://polymarket.com/profile/${w.address}`;
+        const aliasLabel = w.alias || fmtAddr(w.address);
 
         return `
         <tr>
             <td class="mono">${fmtAddr(w.address)}</td>
-            <td>${w.alias || '—'}</td>
+            <td><a href="${profileUrl}" target="_blank" rel="noopener noreferrer" class="wallet-link">${aliasLabel}</a></td>
             <td><span class="badge ${w.source && w.source.startsWith('leaderboard') ? 'badge-resolved' : 'badge-open'}">${w.source || 'manual'}</span></td>
             <td>${trackingBadge}</td>
             <td>${fmtTime(w.enabled_at)}</td>
@@ -194,32 +285,82 @@ async function addOrEnableWallet(address, alias = '') {
     await loadSummary();
 }
 
+async function setLeaderboardTracking(address, alias = '', enabled = true) {
+    const resp = enabled
+        ? await apiPost('/api/wallets', { address, alias })
+        : await apiPost('/api/wallets/toggle', { address, enabled: false });
+    if (!resp) return;
+    await Promise.all([
+        loadWallets(),
+        loadSummary(),
+        loadLeaderboardWallets(),
+    ]);
+}
+
 async function loadLeaderboardWallets() {
     const category = document.getElementById('leaderboard-category').value;
     const timePeriod = document.getElementById('leaderboard-time-period').value;
     const orderBy = document.getElementById('leaderboard-order-by').value;
     const limit = document.getElementById('leaderboard-limit').value || 20;
 
-    const data = await api(`/api/leaderboard?category=${category}&time_period=${timePeriod}&order_by=${orderBy}&limit=${limit}`);
+    const [data, wallets] = await Promise.all([
+        api(`/api/leaderboard?category=${category}&time_period=${timePeriod}&order_by=${orderBy}&limit=${limit}`),
+        api('/api/wallets'),
+    ]);
     const tbody = document.getElementById('leaderboard-wallets-tbody');
     if (!data) {
+        leaderboardWalletCache = [];
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Failed to load leaderboard.</td></tr>';
         return;
     }
     if (!data.length) {
+        leaderboardWalletCache = [];
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No wallets found.</td></tr>';
         return;
     }
+    leaderboardWalletCache = data;
 
-    tbody.innerHTML = data.map(w => `
-        <tr>
-            <td class="mono">${fmtAddr(w.address)}</td>
-            <td>${w.alias || '—'}</td>
-            <td class="${pnlClass(w.pnl || 0)}">${fmt$(Number(w.pnl || 0))}</td>
-            <td>$${Number(w.vol || 0).toLocaleString()}</td>
-            <td><button class="btn btn-sm btn-accent" onclick="addOrEnableWallet('${w.address}', ${JSON.stringify(w.alias || '')})">Track</button></td>
-        </tr>
-    `).join('');
+    const walletMap = new Map((wallets || []).map(w => [String(w.address || '').toLowerCase(), w]));
+    tbody.innerHTML = data.map(w => {
+        const addr = String(w.address || '').toLowerCase();
+        const tracked = !!walletMap.get(addr)?.tracking_enabled;
+        const actionLabel = tracked ? 'Tracking' : 'Track';
+        const actionClass = tracked ? 'btn-success' : 'btn-accent';
+        const targetEnabled = tracked ? 'false' : 'true';
+        const encodedAlias = encodeURIComponent(w.alias || '').replace(/'/g, '%27');
+        const profileUrl = `https://polymarket.com/profile/${w.address}`;
+        const aliasLabel = w.alias || fmtAddr(w.address);
+        return `
+            <tr>
+                <td class="mono">${fmtAddr(w.address)}</td>
+                <td><a href="${profileUrl}" target="_blank" rel="noopener noreferrer" class="wallet-link">${aliasLabel}</a></td>
+                <td class="${pnlClass(w.pnl || 0)}">${fmt$(Number(w.pnl || 0))}</td>
+                <td>$${Number(w.vol || 0).toLocaleString()}</td>
+                <td><button class="btn btn-sm ${actionClass}" onclick="setLeaderboardTracking('${w.address}', decodeURIComponent('${encodedAlias}'), ${targetEnabled})">${actionLabel}</button></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function enableAllLeaderboardWallets() {
+    if (!leaderboardWalletCache.length) {
+        alert('Load a leaderboard first.');
+        return;
+    }
+
+    const requests = leaderboardWalletCache.map((w) =>
+        apiPost('/api/wallets', { address: w.address, alias: w.alias || '' })
+    );
+    const results = await Promise.all(requests);
+    const enabledCount = results.filter(Boolean).length;
+
+    await Promise.all([
+        loadWallets(),
+        loadSummary(),
+        loadLeaderboardWallets(),
+    ]);
+
+    alert(`Enabled ${enabledCount}/${leaderboardWalletCache.length} wallets.`);
 }
 
 async function loadCategories() {
@@ -274,7 +415,7 @@ function predictedDirectionLabel(side, outcomes, outcomeIdx) {
     return `Not ${selectedOutcome}`;
 }
 
-// ── Trades ────────────────────────────────────────────────────────
+// â”€â”€ Trades â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadTrades() {
     const wallet = document.getElementById('filter-wallet').value;
     const resolved = document.getElementById('filter-resolved').value;
@@ -286,8 +427,25 @@ async function loadTrades() {
     const search = document.getElementById('filter-search').value.trim().toLowerCase();
     const tokenFilter = document.getElementById('filter-token').value.trim();
 
+    const currentTradeFilterKey = JSON.stringify({
+        wallet,
+        resolved,
+        category,
+        side,
+        fillStatus,
+        slippageFilter,
+        latencyFilter,
+        search,
+        tokenFilter,
+    });
+    if (currentTradeFilterKey !== lastTradeFilterKey) {
+        tradesPage = 0;
+        lastTradeFilterKey = currentTradeFilterKey;
+    }
+
     let url = `/api/trades?limit=${PAGE_SIZE}&offset=${tradesPage * PAGE_SIZE}`;
     if (wallet) url += `&wallet=${wallet}`;
+    if (resolved) url += `&resolved=${resolved}`;
     if (category) url += `&category=${category}`;
     if (tokenFilter) url += `&token_id=${encodeURIComponent(tokenFilter)}`;
 
@@ -295,8 +453,6 @@ async function loadTrades() {
     if (!data) return;
 
     let filtered = data;
-    if (resolved === 'resolved') filtered = filtered.filter(t => t.resolved);
-    if (resolved === 'unresolved') filtered = filtered.filter(t => !t.resolved);
     if (category) filtered = filtered.filter(t => t.category === category);
     if (tokenFilter) filtered = filtered.filter(t => t.token_id === tokenFilter);
     if (side) filtered = filtered.filter(t => t.side === side);
@@ -334,7 +490,7 @@ async function loadTrades() {
         const outcomes = Array.isArray(t.outcomes) ? t.outcomes : [];
         const outcomeLabel = outcomes[t.outcome_idx] || '?';
         const predictedLabel = predictedDirectionLabel(t.side, outcomes, t.outcome_idx);
-        const question = t.question || '—';
+        const question = t.question || 'â€”';
         const groupItemTitle = (t.group_item_title || '').trim();
         const showGroupItem = groupItemTitle && groupItemTitle.toLowerCase() !== (t.category || '').toLowerCase();
         const statusBadge = t.resolved
@@ -345,25 +501,25 @@ async function loadTrades() {
             : '<span class="badge badge-sell">SELL</span>';
 
         const marketLink = t.slug
-            ? `<a href="https://polymarket.com/event/${t.slug}" target="_blank" class="market-link">${question.slice(0, 45)}${question.length > 45 ? '…' : ''}</a>`
-            : `${question.slice(0, 45)}${question.length > 45 ? '…' : ''}`;
+            ? `<a href="https://polymarket.com/event/${t.slug}" target="_blank" class="market-link">${question.slice(0, 45)}${question.length > 45 ? 'â€¦' : ''}</a>`
+            : `${question.slice(0, 45)}${question.length > 45 ? 'â€¦' : ''}`;
 
         return `
         <tr>
             <td><a href="https://polygonscan.com/tx/${t.tx_hash}" target="_blank" class="tx-link">${fmtTime(t.onchain_ts)}</a></td>
             <td class="mono"><a href="https://polygonscan.com/address/${t.wallet}" target="_blank" class="wallet-link">${fmtAddr(t.wallet)}</a></td>
-            <td class="truncate" title="${question}">${marketLink}<br><small style="color:var(--text-muted)">${outcomeLabel}${showGroupItem ? ` • ${groupItemTitle}` : ''}</small></td>
+            <td class="truncate" title="${question}">${marketLink}<br><small style="color:var(--text-muted)">${outcomeLabel}${showGroupItem ? ` â€¢ ${groupItemTitle}` : ''}</small></td>
             <td><span class="badge badge-resolved" style="background:var(--bg-card); border:1px solid var(--border)">${t.category || 'Other'}</span></td>
             <td>${sideBadge}</td>
             <td><span class="badge" style="background:var(--bg-card); border:1px solid var(--border)">${predictedLabel}</span></td>
             <td class="mono">$${(t.target_price || 0).toFixed(4)}</td>
             <td class="mono">$${(t.paper_price || 0).toFixed(4)}</td>
-            <td class="mono ${pnlClass(-(t.slippage || 0))}">${t.slippage != null ? t.slippage.toFixed(4) : '—'}</td>
+            <td class="mono ${pnlClass(-(t.slippage || 0))}">${t.slippage != null ? t.slippage.toFixed(4) : 'â€”'}</td>
             <td class="mono">${(t.paper_size || 0).toFixed(1)}</td>
-            <td class="mono">${t.total_delay_ms != null ? t.total_delay_ms.toFixed(0) + 'ms' : '—'}</td>
+            <td class="mono">${t.total_delay_ms != null ? t.total_delay_ms.toFixed(0) + 'ms' : 'â€”'}</td>
             <td>${statusBadge}</td>
             <td><button class="btn btn-sm" onclick="goToPosition('${t.token_id}')">Open</button></td>
-            <td><button class="btn btn-sm btn-ghost" onclick="openOrderBook(${t.target_id})">📖</button></td>
+            <td><button class="btn btn-sm btn-ghost" onclick="openOrderBook(${t.target_id})">ðŸ“–</button></td>
         </tr>`;
     }).join('');
 
@@ -375,7 +531,7 @@ async function loadTrades() {
 function tradesNext() { tradesPage++; loadTrades(); }
 function tradesPrev() { if (tradesPage > 0) { tradesPage--; loadTrades(); } }
 
-// ── Positions ─────────────────────────────────────────────────────
+// â”€â”€ Positions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadPositions() {
     const filter = document.getElementById('position-filter').value;
     const category = document.getElementById('position-category').value;
@@ -420,14 +576,14 @@ async function loadPositions() {
     tbody.innerHTML = filtered.map(p => {
         const outcomes = Array.isArray(p.outcomes) ? p.outcomes : [];
         const outcomeLabel = outcomes[p.outcome_idx] || '?';
-        const question = p.question || p.token_id.slice(0, 20) + '…';
+        const question = p.question || p.token_id.slice(0, 20) + 'â€¦';
         const statusBadge = p.resolved
             ? `<span class="badge badge-resolved">Resolved (${p.payout_value})</span>`
             : `<span class="badge badge-open">Open</span>`;
 
         const marketLink = p.slug
-            ? `<a href="https://polymarket.com/event/${p.slug}" target="_blank" class="market-link">${question.slice(0, 55)}${question.length > 55 ? '…' : ''}</a>`
-            : `${question.slice(0, 55)}${question.length > 55 ? '…' : ''}`;
+            ? `<a href="https://polymarket.com/event/${p.slug}" target="_blank" class="market-link">${question.slice(0, 55)}${question.length > 55 ? 'â€¦' : ''}</a>`
+            : `${question.slice(0, 55)}${question.length > 55 ? 'â€¦' : ''}`;
 
         const sourceWallets = (p.source_wallets || '').split(',').filter(Boolean);
         const walletBadges = sourceWallets.slice(0, 2)
@@ -440,7 +596,9 @@ async function loadPositions() {
             <td class="truncate" title="${question}">${marketLink}</td>
             <td><span class="badge" style="background:var(--bg-card); border:1px solid var(--border)">${p.category || 'Other'}</span></td>
             <td>${outcomeLabel}</td>
-            <td>${walletBadges || '—'}${extraWallets}</td>
+            <td>${walletBadges || 'â€”'}${extraWallets}</td>
+            <td class="mono">${fmtTime(p.entry_ts)}</td>
+            <td class="mono">${fmtTime(p.resolved_ts)}</td>
             <td class="mono">${p.size.toFixed(2)}</td>
             <td class="mono">$${p.cost_basis.toFixed(2)}</td>
             <td class="mono ${pnlClass(p.realized_pnl)}">${fmt$(p.realized_pnl)}</td>
@@ -451,7 +609,7 @@ async function loadPositions() {
     }).join('');
 }
 
-// ── Charts ────────────────────────────────────────────────────────
+// â”€â”€ Charts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadCharts() {
     await Promise.all([loadPnlChart(), loadLatencyChart(), loadCategoryPnLChart()]);
 }
@@ -603,7 +761,7 @@ async function loadCategoryPnLChart() {
     });
 }
 
-// ── Tab switching ─────────────────────────────────────────────────
+// â”€â”€ Tab switching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function switchTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${name}`));
@@ -618,8 +776,8 @@ async function openOrderBook(targetId) {
     }
 
     document.getElementById('ob-modal-info').innerHTML = `
-        Target Trade ID: ${targetId} · Token: ${data.token_id} · 
-        Best Bid: $${(data.best_bid || 0).toFixed(4)} · Best Ask: $${(data.best_ask || 0).toFixed(4)} <br>
+        Target Trade ID: ${targetId} Â· Token: ${data.token_id} Â· 
+        Best Bid: $${(data.best_bid || 0).toFixed(4)} Â· Best Ask: $${(data.best_ask || 0).toFixed(4)} <br>
         Total Liquidity (USD): <span style="color:#10b981">Bids $${(data.total_bid_liquidity_usd || 0).toLocaleString()}</span> / 
         <span style="color:#ef4444">Asks $${(data.total_ask_liquidity_usd || 0).toLocaleString()}</span>
     `;
@@ -670,12 +828,16 @@ Object.assign(window, {
     closeModal,
     filterByWallet,
     goToPosition,
+    enableAllLeaderboardWallets,
     loadLeaderboardWallets,
     openOrderBook,
     refreshAll,
+    setLeaderboardTracking,
+    setTradesColumnWidths,
     switchTab,
     toggleWalletTracking,
     tradesNext,
     tradesPrev,
     viewTradesForToken,
+    resetTradesColumnWidths,
 });

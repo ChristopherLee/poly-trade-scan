@@ -229,6 +229,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def _api_trades(self, conn, params):
         wallet = params.get("wallet", [None])[0]
         token_id = params.get("token_id", [None])[0]
+        resolved_filter = params.get("resolved", [None])[0]
         limit = int(params.get("limit", [100])[0])
         offset = int(params.get("offset", [0])[0])
 
@@ -257,6 +258,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if category:
             query += " AND m.category = ?"
             bindings.append(category)
+        if resolved_filter == "resolved":
+            query += " AND m.resolved = 1"
+        elif resolved_filter == "unresolved":
+            query += " AND (m.resolved = 0 OR m.resolved IS NULL)"
         query += " ORDER BY tt.created_at DESC LIMIT ? OFFSET ?"
         bindings.extend([limit, offset])
 
@@ -286,7 +291,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                    (SELECT GROUP_CONCAT(DISTINCT tt.wallet)
                     FROM paper_trades pt
                     JOIN target_trades tt ON tt.id = pt.target_trade_id
-                    WHERE pt.token_id = p.token_id) as source_wallets
+                    WHERE pt.token_id = p.token_id) as source_wallets,
+                   (SELECT MIN(pt.created_at) FROM paper_trades pt WHERE pt.token_id = p.token_id) as entry_ts,
+                   m.resolved_at as resolved_ts
             FROM positions p
             LEFT JOIN markets m ON m.token_id = p.token_id
             WHERE 1=1
@@ -360,17 +367,21 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         points = []
         for r in rows:
             d = dict(r)
+            side = str(d.get("side") or "").upper()
+            cost = float(d.get("cost_usd") or 0.0)
             # Approximate PnL contribution per trade (negative for buys, positive for sells)
-            if d["side"] == "SELL":
-                cumulative += d["cost_usd"]
+            if side == "SELL":
+                cumulative += cost
             else:
-                cumulative -= d["cost_usd"]
+                cumulative -= cost
             points.append({
                 "ts": d["ts"],
                 "cumulative_cost": round(cumulative, 2),
                 "wallet": d["wallet"],
                 "question": d.get("question", ""),
             })
+
+        self._json_response(points)
 
     def _api_pnl_by_category(self, conn):
         """Aggregate realized/unrealized PnL by market category."""

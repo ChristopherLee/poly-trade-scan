@@ -71,7 +71,8 @@
         <!-- Tabs -->
         <nav class="tabs">
             <button class="tab active" data-tab="trades" onclick="switchTab('trades')">Trades</button>
-            <button class="tab" data-tab="wallets" onclick="switchTab('wallets')">Wallets</button>
+            <button class="tab" data-tab="wallets" onclick="switchTab('wallets')">Leaderboards</button>
+            <button class="tab" data-tab="tracked-wallets" onclick="switchTab('tracked-wallets')">Tracked Wallets</button>
             <button class="tab" data-tab="positions" onclick="switchTab('positions')">Positions</button>
             <button class="tab" data-tab="charts" onclick="switchTab('charts')">Charts</button>
         </nav>
@@ -144,6 +145,22 @@
             </div>
             <div class="table-wrapper">
                 <table class="data-table" id="trades-table">
+                    <colgroup>
+                        <col class="col-time">
+                        <col class="col-wallet">
+                        <col class="col-market">
+                        <col class="col-category">
+                        <col class="col-side">
+                        <col class="col-predicted">
+                        <col class="col-target-price">
+                        <col class="col-paper-price">
+                        <col class="col-slippage">
+                        <col class="col-size">
+                        <col class="col-latency">
+                        <col class="col-status">
+                        <col class="col-position">
+                        <col class="col-book">
+                    </colgroup>
                     <thead>
                         <tr>
                             <th>Time</th>
@@ -172,20 +189,8 @@
             </div>
         </section>
 
-        <!-- Wallets Tab -->
+        <!-- Leaderboards Tab -->
         <section class="tab-content" id="tab-wallets">
-            <div class="toolbar">
-                <div class="filter-group">
-                    <label>Wallet Address</label>
-                    <input id="wallet-address-input" placeholder="0x..." />
-                </div>
-                <div class="filter-group">
-                    <label>Alias (optional)</label>
-                    <input id="wallet-alias-input" placeholder="Whale name" />
-                </div>
-                <button class="btn btn-accent" onclick="addWallet()">+ Add Wallet</button>
-            </div>
-
             <div class="card" style="margin-bottom: 1rem;">
                 <div class="toolbar" style="margin-bottom:0;">
                     <div class="filter-group">
@@ -224,6 +229,7 @@
                         <input id="leaderboard-limit" type="number" min="1" max="100" value="20" />
                     </div>
                     <button class="btn" onclick="loadLeaderboardWallets()">Load Leaderboard</button>
+                    <button class="btn btn-accent" onclick="enableAllLeaderboardWallets()">Enable All</button>
                 </div>
                 <div class="table-wrapper" style="margin-top: 1rem;">
                     <table class="data-table" id="leaderboard-wallets-table">
@@ -241,6 +247,21 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </section>
+
+        <!-- Tracked Wallets Tab -->
+        <section class="tab-content" id="tab-tracked-wallets">
+            <div class="toolbar">
+                <div class="filter-group">
+                    <label>Wallet Address</label>
+                    <input id="wallet-address-input" placeholder="0x..." />
+                </div>
+                <div class="filter-group">
+                    <label>Alias (optional)</label>
+                    <input id="wallet-alias-input" placeholder="Whale name" />
+                </div>
+                <button class="btn btn-accent" onclick="addWallet()">+ Add Wallet</button>
             </div>
             <div class="table-wrapper">
                 <table class="data-table" id="wallets-table">
@@ -303,6 +324,8 @@
                             <th>Category</th>
                             <th>Outcome</th>
                             <th>Source Wallets</th>
+                            <th>Entry</th>
+                            <th>Resolved</th>
                             <th>Size</th>
                             <th>Cost Basis</th>
                             <th>Realized PnL</th>

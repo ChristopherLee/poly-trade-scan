@@ -31,6 +31,20 @@
     --radius-sm: 8px;
     --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
     --transition: 0.2s ease;
+    --trades-col-time: 130px;
+    --trades-col-wallet: 130px;
+    --trades-col-market: 360px;
+    --trades-col-category: 140px;
+    --trades-col-side: 90px;
+    --trades-col-predicted: 170px;
+    --trades-col-target-price: 120px;
+    --trades-col-paper-price: 120px;
+    --trades-col-slippage: 100px;
+    --trades-col-size: 120px;
+    --trades-col-latency: 110px;
+    --trades-col-status: 90px;
+    --trades-col-position: 100px;
+    --trades-col-book: 70px;
 }
 
 html {
@@ -187,6 +201,30 @@ body {
     background: var(--accent);
     border-color: var(--accent);
     color: #fff;
+}
+
+.btn-danger {
+    background: var(--red-dim);
+    border-color: var(--red);
+    color: #fecaca;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: #f87171;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.btn-success {
+    background: var(--green-dim);
+    border-color: var(--green);
+    color: #bbf7d0;
+}
+
+.btn-success:hover {
+    background: rgba(16, 185, 129, 0.22);
+    border-color: #34d399;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
 /* ── Main Layout ──────────────────────────────────────────────── */
@@ -363,6 +401,31 @@ body {
     font-size: 0.82rem;
 }
 
+#trades-table {
+    width: max-content;
+    min-width: 100%;
+}
+
+#trades-table col.col-time { width: var(--trades-col-time); }
+#trades-table col.col-wallet { width: var(--trades-col-wallet); }
+#trades-table col.col-market { width: var(--trades-col-market); }
+#trades-table col.col-category { width: var(--trades-col-category); }
+#trades-table col.col-side { width: var(--trades-col-side); }
+#trades-table col.col-predicted { width: var(--trades-col-predicted); }
+#trades-table col.col-target-price { width: var(--trades-col-target-price); }
+#trades-table col.col-paper-price { width: var(--trades-col-paper-price); }
+#trades-table col.col-slippage { width: var(--trades-col-slippage); }
+#trades-table col.col-size { width: var(--trades-col-size); }
+#trades-table col.col-latency { width: var(--trades-col-latency); }
+#trades-table col.col-status { width: var(--trades-col-status); }
+#trades-table col.col-position { width: var(--trades-col-position); }
+#trades-table col.col-book { width: var(--trades-col-book); }
+
+#positions-table {
+    width: max-content;
+    min-width: 100%;
+}
+
 .data-table th {
     text-align: left;
     padding: 0.75rem 1rem;
@@ -406,7 +469,7 @@ body {
 }
 
 .data-table .truncate {
-    max-width: 250px;
+    max-width: var(--trades-col-market);
     overflow: hidden;
     text-overflow: ellipsis;
 }
