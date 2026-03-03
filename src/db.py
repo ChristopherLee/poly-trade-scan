@@ -7,6 +7,19 @@ from typing import Optional
 
 DB_PATH = Path(__file__).parent.parent / "paper_trades.db"
 
+INDEX_STATEMENTS = (
+    "CREATE INDEX IF NOT EXISTS idx_wallets_tracking_order ON wallets(tracking_enabled DESC, COALESCE(enabled_at, added_at) DESC, leaderboard_pnl DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_markets_resolved_first_seen ON markets(resolved, first_seen DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_markets_condition_id ON markets(condition_id)",
+    "CREATE INDEX IF NOT EXISTS idx_target_wallet_created_at ON target_trades(wallet, created_at DESC, id)",
+    "CREATE INDEX IF NOT EXISTS idx_target_token_created_at ON target_trades(token_id, created_at DESC, id)",
+    "CREATE INDEX IF NOT EXISTS idx_paper_token_created_at ON paper_trades(token_id, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_paper_created_at ON paper_trades(created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_ob_target ON orderbook_snapshots(target_trade_id)",
+    "CREATE INDEX IF NOT EXISTS idx_ob_token ON orderbook_snapshots(token_id)",
+    "CREATE INDEX IF NOT EXISTS idx_positions_updated_at ON positions(updated_at DESC)",
+)
+
 
 def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
     """Return a connection with WAL mode and row_factory."""
@@ -151,8 +164,6 @@ def init_db(db_path: Optional[str] = None) -> None:
     CREATE INDEX IF NOT EXISTS idx_paper_token      ON paper_trades(token_id);
     CREATE INDEX IF NOT EXISTS idx_paper_target     ON paper_trades(target_trade_id);
     CREATE INDEX IF NOT EXISTS idx_market_resolved  ON markets(resolved);
-    CREATE INDEX IF NOT EXISTS idx_ob_target        ON orderbook_snapshots(target_trade_id);
-    CREATE INDEX IF NOT EXISTS idx_ob_token         ON orderbook_snapshots(token_id);
     """)
 
     conn.commit()
@@ -247,6 +258,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_ob_token  ON orderbook_snapshots(token_id);
         """)
         conn.commit()
+
+    for statement in INDEX_STATEMENTS:
+        conn.execute(statement)
+    conn.commit()
 
 
 

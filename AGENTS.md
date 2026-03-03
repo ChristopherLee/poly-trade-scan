@@ -68,6 +68,11 @@ python dashboard.py
 # Access at http://localhost:8050
 ```
 
+Dashboard verification tips:
+- After backend changes, verify the live server, not just the source tree. A direct check like `curl http://localhost:8050/api/summary` or `curl "http://localhost:8050/api/wallet_detail?wallet=0x..."` is the fastest sanity test.
+- If the browser still shows old behavior after code changes, assume the dashboard process is stale before assuming the patch failed.
+- For UI regressions, use Playwright against `http://localhost:8050/` so you are testing the running dashboard, including API wiring.
+
 
 ### Dashboard Test Data (Recommended)
 Use the commands below to get deterministic local data for UI testing:
@@ -99,6 +104,8 @@ Notes:
 2.  **Database Locking**: The dashboard and the live simulator both access `paper_trades.db`. Always use `PRAGMA journal_mode=WAL` and set a `timeout` (e.g., 30s) in `sqlite3.connect` to prevent `database is locked` errors during concurrent writes.
 3.  **Token IDs vs. Condition IDs**: A single "Market" (Condition) has multiple "Tokens" (e.g., Yes token and No token). Everything in this system is indexed by `token_id`.
 4.  **Simulation Logic**: "Walking the book" means iterating through `asks` for a BUY and `bids` for a SELL. If liquidity is insufficient, the trade is recorded as a "No Fill".
+5.  **Dashboard Process Staleness**: It is easy to end up with an old `dashboard.py` process still bound to port `8050`. If a new endpoint returns `{"error":"not found"}` even though the code exists locally, check the live server first with `curl`, then inspect listeners with `netstat -ano | findstr :8050`, stop stale Python processes, and restart the dashboard.
+6.  **API/UI Verification Order**: For dashboard work, test in this order: `(1)` direct API call with `curl`, `(2)` reload the page, `(3)` Playwright/browser interaction. This isolates whether the issue is backend routing, stale frontend state, or rendering.
 
 ---
 

@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260303b">
 </head>
 
 <body>
@@ -163,18 +163,18 @@
                     </colgroup>
                     <thead>
                         <tr>
-                            <th>Time</th>
-                            <th>Wallet</th>
-                            <th>Market</th>
-                            <th>Category</th>
-                            <th>Side</th>
-                            <th>Predicted Direction</th>
-                            <th>Target Price</th>
-                            <th>Paper Price</th>
-                            <th>Slippage</th>
-                            <th>Size (shares)</th>
-                            <th>Latency</th>
-                            <th>Status</th>
+                            <th class="sortable" data-sort-type="time">Time</th>
+                            <th class="sortable" data-sort-type="string">Wallet</th>
+                            <th class="sortable" data-sort-type="string">Market</th>
+                            <th class="sortable" data-sort-type="string">Category</th>
+                            <th class="sortable" data-sort-type="string">Side</th>
+                            <th class="sortable" data-sort-type="string">Predicted Direction</th>
+                            <th class="sortable" data-sort-type="number">Target Price</th>
+                            <th class="sortable" data-sort-type="number">Paper Price</th>
+                            <th class="sortable" data-sort-type="number">Slippage</th>
+                            <th class="sortable" data-sort-type="number">Size (shares)</th>
+                            <th class="sortable" data-sort-type="number">Latency</th>
+                            <th class="sortable" data-sort-type="string">Status</th>
                             <th>Position</th>
                             <th>Book</th>
                         </tr>
@@ -235,10 +235,10 @@
                     <table class="data-table" id="leaderboard-wallets-table">
                         <thead>
                             <tr>
-                                <th>Address</th>
-                                <th>Alias</th>
-                                <th>PnL</th>
-                                <th>Volume</th>
+                                <th class="sortable" data-sort-type="string">Address</th>
+                                <th class="sortable" data-sort-type="string">Alias</th>
+                                <th class="sortable" data-sort-type="number">PnL</th>
+                                <th class="sortable" data-sort-type="number">Volume</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -267,16 +267,16 @@
                 <table class="data-table" id="wallets-table">
                     <thead>
                         <tr>
-                            <th>Address</th>
-                            <th>Alias</th>
-                            <th>Source</th>
-                            <th>Tracking</th>
-                            <th>Enabled At</th>
-                            <th>Disabled At</th>
-                            <th>LB PnL</th>
-                            <th>LB Volume</th>
-                            <th>Trades Seen</th>
-                            <th>Paper Volume</th>
+                            <th class="sortable" data-sort-type="string">Address</th>
+                            <th class="sortable" data-sort-type="string">Alias</th>
+                            <th class="sortable" data-sort-type="string">Source</th>
+                            <th class="sortable" data-sort-type="string">Tracking</th>
+                            <th class="sortable" data-sort-type="time">Enabled At</th>
+                            <th class="sortable" data-sort-type="time">Disabled At</th>
+                            <th class="sortable" data-sort-type="number">Realized PnL</th>
+                            <th class="sortable" data-sort-type="number">Leaderboard Volume</th>
+                            <th class="sortable" data-sort-type="number">Trades Seen</th>
+                            <th class="sortable" data-sort-type="number">Paper Volume</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -320,17 +320,17 @@
                 <table class="data-table" id="positions-table">
                     <thead>
                         <tr>
-                            <th>Market</th>
-                            <th>Category</th>
-                            <th>Outcome</th>
-                            <th>Source Wallets</th>
-                            <th>Entry</th>
-                            <th>Resolved</th>
-                            <th>Size</th>
-                            <th>Cost Basis</th>
-                            <th>Realized PnL</th>
-                            <th>Unrealized PnL</th>
-                            <th>Status</th>
+                            <th class="sortable" data-sort-type="string">Market</th>
+                            <th class="sortable" data-sort-type="string">Category</th>
+                            <th class="sortable" data-sort-type="string">Outcome</th>
+                            <th class="sortable" data-sort-type="string">Source Wallets</th>
+                            <th class="sortable" data-sort-type="time">Entry</th>
+                            <th class="sortable" data-sort-type="time">Resolved</th>
+                            <th class="sortable" data-sort-type="number">Size</th>
+                            <th class="sortable" data-sort-type="number">Cost Basis</th>
+                            <th class="sortable" data-sort-type="number">Realized PnL</th>
+                            <th class="sortable" data-sort-type="number">Unrealized PnL</th>
+                            <th class="sortable" data-sort-type="string">Status</th>
                             <th>Trades</th>
                         </tr>
                     </thead>
@@ -397,7 +397,80 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <div id="wallet-modal" class="modal">
+        <div class="modal-content wallet-modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="wallet-modal-title">Wallet Detail</h3>
+                    <div id="wallet-modal-subtitle" class="modal-subtitle"></div>
+                </div>
+                <button class="close-btn" onclick="closeModal('wallet-modal')">&times;</button>
+            </div>
+
+            <div id="wallet-modal-summary" class="wallet-summary-grid"></div>
+
+            <div class="wallet-section">
+                <div class="wallet-section-header">
+                    <h4>Derived Positions</h4>
+                    <span id="wallet-positions-meta" class="section-meta"></span>
+                </div>
+                <div class="table-wrapper wallet-table-wrapper">
+                    <table class="data-table" id="wallet-positions-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort-type="string">Market</th>
+                                <th class="sortable" data-sort-type="string">Category</th>
+                                <th class="sortable" data-sort-type="string">Outcome</th>
+                                <th class="sortable" data-sort-type="string">Status</th>
+                                <th class="sortable" data-sort-type="time">Opened</th>
+                                <th class="sortable" data-sort-type="number">Fills</th>
+                                <th class="sortable" data-sort-type="number">Open Size</th>
+                                <th class="sortable" data-sort-type="number">Open Basis</th>
+                                <th class="sortable" data-sort-type="number">Total Cost</th>
+                                <th class="sortable" data-sort-type="number">Avg Entry</th>
+                                <th class="sortable" data-sort-type="number">Avg Exit / Payout</th>
+                                <th class="sortable" data-sort-type="number">Realized</th>
+                                <th class="sortable" data-sort-type="number">Unrealized</th>
+                                <th class="sortable" data-sort-type="number">Total PnL</th>
+                                <th class="sortable" data-sort-type="number">ROI %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wallet-positions-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="wallet-section">
+                <div class="wallet-section-header">
+                    <h4>Tracked Trades</h4>
+                    <span id="wallet-trades-meta" class="section-meta"></span>
+                </div>
+                <div class="table-wrapper wallet-table-wrapper">
+                    <table class="data-table" id="wallet-trades-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort-type="time">Time</th>
+                                <th class="sortable" data-sort-type="string">Market</th>
+                                <th class="sortable" data-sort-type="string">Side</th>
+                                <th class="sortable" data-sort-type="string">Position Effect</th>
+                                <th class="sortable" data-sort-type="number">Target</th>
+                                <th class="sortable" data-sort-type="number">Paper</th>
+                                <th class="sortable" data-sort-type="number">Size</th>
+                                <th class="sortable" data-sort-type="number">Slippage</th>
+                                <th class="sortable" data-sort-type="number">Trade PnL</th>
+                                <th class="sortable" data-sort-type="number">Latency</th>
+                                <th class="sortable" data-sort-type="string">Fill</th>
+                                <th>Book</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wallet-trades-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=20260303b"></script>
 </body>
 
 </html>

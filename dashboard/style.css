@@ -440,11 +440,35 @@ body {
     top: 0;
 }
 
+.data-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+}
+
+.data-table th.sortable::after {
+    content: ' ↕';
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.data-table th.sortable.sorted-asc::after {
+    content: ' ↑';
+    color: var(--accent);
+}
+
+.data-table th.sortable.sorted-desc::after {
+    content: ' ↓';
+    color: var(--accent);
+}
+
 .data-table td {
     padding: 0.6rem 1rem;
     border-bottom: 1px solid var(--border);
     color: var(--text-secondary);
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: top;
 }
 
 .data-table tr:hover td {
@@ -454,6 +478,7 @@ body {
 .data-table .mono {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 0.78rem;
+    overflow-wrap: anywhere;
 }
 
 .data-table .text-green {
@@ -529,7 +554,98 @@ body {
     margin-bottom: 1rem;
 }
 
+.wallet-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.wallet-stat-card {
+    padding: 1rem;
+}
+
+.wallet-stat-card .stat-value {
+    font-size: 1.2rem;
+}
+
+.wallet-section {
+    margin-top: 1.25rem;
+}
+
+.wallet-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.65rem;
+}
+
+.wallet-section-header h4 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.section-meta {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.wallet-table-wrapper {
+    max-height: 42vh;
+}
+
+.wallet-row-positive td {
+    box-shadow: inset 3px 0 0 rgba(16, 185, 129, 0.85);
+}
+
+.wallet-row-negative td {
+    box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.85);
+}
+
+.wallet-row-neutral td {
+    box-shadow: inset 3px 0 0 rgba(100, 116, 139, 0.35);
+}
+
+.wallet-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
 /* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 1400px) {
+    #leaderboard-wallets-table,
+    #wallets-table,
+    #positions-table,
+    #trades-table {
+        width: 100%;
+        min-width: 100%;
+        table-layout: fixed;
+    }
+
+    #leaderboard-wallets-table th,
+    #leaderboard-wallets-table td,
+    #wallets-table th,
+    #wallets-table td,
+    #positions-table th,
+    #positions-table td,
+    #trades-table th,
+    #trades-table td {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    #trades-table .truncate,
+    #positions-table .truncate,
+    #wallets-table .truncate {
+        max-width: none;
+        white-space: normal;
+    }
+}
+
 @media (max-width: 900px) {
     .charts-grid {
         grid-template-columns: 1fr;
@@ -537,6 +653,15 @@ body {
 
     .summary-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    #leaderboard-wallets-table,
+    #wallets-table,
+    #positions-table,
+    #trades-table {
+        width: max-content;
+        min-width: 100%;
+        table-layout: auto;
     }
 }
 
@@ -548,6 +673,11 @@ body {
     .header {
         flex-direction: column;
         gap: 0.5rem;
+    }
+
+    .wallet-section-header {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 
@@ -577,6 +707,13 @@ body {
     animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.wallet-modal-content {
+    width: min(94vw, 1440px);
+    max-width: 1440px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
 @keyframes modal-pop {
     0% {
         opacity: 0;
@@ -594,6 +731,19 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+}
+
+.modal-subtitle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.wallet-detail-divider {
+    color: var(--border-hover);
 }
 
 .close-btn {
@@ -666,4 +816,11 @@ body {
 
 #ob-asks-tbody td:first-child {
     color: #ef4444;
+}
+
+@media (max-width: 600px) {
+    .wallet-modal-content {
+        margin: 2vh auto;
+        padding: 16px;
+    }
 }
