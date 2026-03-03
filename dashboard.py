@@ -223,7 +223,8 @@ def _build_wallet_detail_payload(conn, wallet: str):
 
             reference_price = trade.get("payout_value") if trade.get("resolved") else trade.get("last_price")
             if reference_price is None:
-                reference_price = 0.5
+                # Missing market data should not invent trade PnL; fall back to our fill price.
+                reference_price = paper_price
             reference_price = float(reference_price)
             if side == "BUY":
                 trade["trade_pnl"] = round((reference_price - paper_price) * paper_size, 2)
@@ -268,7 +269,7 @@ def _build_wallet_detail_payload(conn, wallet: str):
             status = "Resolved"
         else:
             if size > 0.0001:
-                mark_price = float(last_price) if last_price is not None else 0.5
+                mark_price = float(last_price) if last_price is not None else (cost_basis / size)
                 unrealized = (mark_price * size) - cost_basis
                 active_positions += 1
                 status = "Open"
@@ -446,7 +447,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                FROM positions p WHERE p.size > 0.0001"""
         ).fetchall()
         unrealized = sum(
-            (r["last_price"] or 0.5) * r["size"] - r["cost_basis"]
+            ((r["last_price"] if r["last_price"] is not None else (r["cost_basis"] / r["size"])) * r["size"]) - r["cost_basis"]
             for r in unrealized_rows
         )
 
@@ -637,7 +638,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     pass
             # Calculate unrealized PnL
             if d["size"] > 0.0001 and not d.get("resolved"):
-                price = d.get("last_price") or 0.5
+                price = d.get("last_price")
+                if price is None:
+                    price = d["cost_basis"] / d["size"]
                 d["unrealized_pnl"] = round(price * d["size"] - d["cost_basis"], 2)
             else:
                 d["unrealized_pnl"] = 0
@@ -734,7 +737,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             stats[cat]["realized"] += r["realized_pnl"]
             
             if r["size"] > 0.0001 and not r["resolved"]:
-                price = r["last_price"] or 0.5
+                price = r["last_price"]
+                if price is None:
+                    price = r["cost_basis"] / r["size"]
                 unrealized = (price * r["size"]) - r["cost_basis"]
                 stats[cat]["unrealized"] += unrealized
 

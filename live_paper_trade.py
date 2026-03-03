@@ -487,12 +487,14 @@ async def main():
     monitor = TradeMonitor()
     run_control = RunControl(args.max_trades)
     monitor.on("transaction", partial(on_transaction, args=args, run_control=run_control, monitor=monitor))
+    resolution_task: Optional[asyncio.Task] = None
+    metadata_task: Optional[asyncio.Task] = None
 
     try:
         if args.run_resolution_inline:
             from src.resolution_worker import ResolutionWorker
             resolution_worker = ResolutionWorker(db_path=args.db, poll_interval_seconds=1800)
-            asyncio.create_task(resolution_worker.run())
+            resolution_task = asyncio.create_task(resolution_worker.run())
             log.info("Resolution worker running inline with live simulator")
         else:
             log.warning(
@@ -505,12 +507,19 @@ async def main():
                 await asyncio.to_thread(check_missing_metadata, args.db)
                 await asyncio.sleep(600)
 
-        asyncio.create_task(metadata_backfill_loop())
+        metadata_task = asyncio.create_task(metadata_backfill_loop())
 
         await monitor.start(target_wallets)
     except KeyboardInterrupt:
-        await monitor.stop()
         log.info("Monitor stopped gracefully.")
+    finally:
+        for task in (metadata_task, resolution_task):
+            if task is not None:
+                task.cancel()
+        tasks_to_await = [task for task in (metadata_task, resolution_task) if task is not None]
+        if tasks_to_await:
+            await asyncio.gather(*tasks_to_await, return_exceptions=True)
+        await monitor.stop()
 
 
 if __name__ == "__main__":

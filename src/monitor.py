@@ -24,6 +24,7 @@ class TradeMonitor:
             "close": [],
         }
         self._running = False
+        self._stopped = False
 
     def on(self, event: str, callback: Callable) -> None:
         """Register event callback."""
@@ -41,6 +42,7 @@ class TradeMonitor:
     async def start(self, target_wallets: list[str]) -> None:
         """Start monitoring for trades from target wallets."""
         self._running = True
+        self._stopped = False
         wallet_count = len(target_wallets) if target_wallets else 0
         log.info("Starting monitor", wallet_count=wallet_count)
 
@@ -62,6 +64,8 @@ class TradeMonitor:
             log.error("Monitor error", error=str(e))
             self.emit("error", e)
             self.emit("close", {"code": -1, "reason": str(e)})
+        finally:
+            await self.stop()
 
     async def _on_block(self, block_number: int, processor: BlockProcessor) -> None:
         """Handle new block event."""
@@ -75,6 +79,9 @@ class TradeMonitor:
 
     async def stop(self) -> None:
         """Stop monitoring."""
+        if self._stopped:
+            return
+        self._stopped = True
         self._running = False
         await self.client.disconnect()
         log.info("Monitor stopped")
