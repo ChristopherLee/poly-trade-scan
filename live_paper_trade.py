@@ -6,15 +6,16 @@ import urllib.request
 import urllib.error
 import json
 import ssl
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from functools import partial
 from datetime import datetime
 
-from src.monitor import TradeMonitor
 from src.core.models import TradeData
-from src.resolution_worker import ResolutionWorker
 from src.utils.logging import get_logger
 from src import db
+
+if TYPE_CHECKING:
+    from src.monitor import TradeMonitor
 
 ssl_context = ssl._create_unverified_context()
 log = get_logger(__name__)
@@ -42,6 +43,19 @@ class RunControl:
                 self.stop_requested = True
                 return True
             return False
+
+
+def normalize_target_trade(trade: TradeData) -> tuple[str, float, float, float]:
+    """Return side, shares, price, and USD notional from raw maker/taker amounts."""
+    side_str = "BUY" if trade.side == 0 else "SELL"
+    if side_str == "BUY":
+        target_cost = trade.maker_amount / 1e6
+        target_size = trade.taker_amount / 1e6
+    else:
+        target_size = trade.maker_amount / 1e6
+        target_cost = trade.taker_amount / 1e6
+    target_price = (target_cost / target_size) if target_size > 0 else 0.0
+    return side_str, target_size, target_price, target_cost
 
 
 # ── HTTP helpers ──────────────────────────────────────────────────
@@ -129,21 +143,14 @@ def fetch_top_wallets(category: str, time_period: str, order_by: str, limit: int
 
 # ── Trade handler ─────────────────────────────────────────────────
 
-async def on_transaction(trade: TradeData, args: argparse.Namespace, run_control: RunControl, monitor: TradeMonitor):
+async def on_transaction(trade: TradeData, args: argparse.Namespace, run_control: RunControl, monitor: "TradeMonitor"):
     detect_time = time.time()
     onchain_time = datetime.fromisoformat(trade.timestamp).timestamp()
 
     token_id = trade.token_id
-    side_str = "BUY" if trade.side == 0 else "SELL"
-
-    amount_a = trade.maker_amount / 1e6
-    amount_b = trade.taker_amount / 1e6
-    if max(amount_a, amount_b) == 0:
+    side_str, target_size, target_price, target_cost = normalize_target_trade(trade)
+    if target_size <= 0:
         return
-
-    target_price = min(amount_a, amount_b) / max(amount_a, amount_b)
-    target_size = max(amount_a, amount_b)
-    target_cost = target_size * target_price
 
     # Fetch / cache market metadata & orderbook (Netword IO outside transaction)
     meta = await asyncio.to_thread(fetch_market_metadata, token_id)
@@ -197,9 +204,13 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace, run_control
             # 4. Simulate fill logic (moved inside for atomicity)
             paper_cost_basis = 0.0
             shares_filled = 0.0
-            desired_dollars = args.size
+            requested_size = None
+            source_position_fraction = None
+            source_position_before = None
+            position_mismatch_reason = None
 
             if side_str == "BUY":
+                desired_dollars = args.size
                 for ask in sorted(asks, key=lambda x: float(x['price'])):
                     p, s = float(ask['price']), float(ask['size'])
                     cost_for_level = p * s
@@ -211,18 +222,39 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace, run_control
                     else:
                         shares_filled += s
                         paper_cost_basis += cost_for_level
+                requested_size = shares_filled if shares_filled > 0 else None
             else:
+                source_position_before = db.get_target_wallet_open_size_before_trade(
+                    conn, trade.wallet, token_id, target_trade_id
+                )
+                wallet_pos = db.get_wallet_position(conn, trade.wallet, token_id)
+                copied_position_before = float(wallet_pos["size"] or 0.0)
+
+                if source_position_before <= 0.0001:
+                    requested_size = 0.0
+                    position_mismatch_reason = "no source inventory before sell"
+                elif copied_position_before <= 0.0001:
+                    requested_size = 0.0
+                    source_position_fraction = min(1.0, target_size / source_position_before)
+                    position_mismatch_reason = "no copied position for source sell"
+                else:
+                    source_position_fraction = min(1.0, target_size / source_position_before)
+                    requested_size = copied_position_before * source_position_fraction
+                    if requested_size > copied_position_before:
+                        requested_size = copied_position_before
+                        position_mismatch_reason = "requested sell capped to copied position"
+
+                remaining_shares = float(requested_size or 0.0)
                 for bid in sorted(bids, key=lambda x: float(x['price']), reverse=True):
-                    p, s = float(bid['price']), float(bid['size'])
-                    value_for_level = p * s
-                    if paper_cost_basis + value_for_level >= desired_dollars:
-                        remaining = desired_dollars - paper_cost_basis
-                        shares_filled += remaining / p
-                        paper_cost_basis += remaining
+                    if remaining_shares <= 0.0000001:
                         break
-                    else:
-                        shares_filled += s
-                        paper_cost_basis += value_for_level
+                    p, s = float(bid['price']), float(bid['size'])
+                    fill_size = min(s, remaining_shares)
+                    if fill_size <= 0:
+                        continue
+                    shares_filled += fill_size
+                    paper_cost_basis += fill_size * p
+                    remaining_shares -= fill_size
 
             fill_time = time.time()
             detection_delay = (detect_time - onchain_time) * 1000
@@ -256,18 +288,22 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace, run_control
                     detection_delay_ms=detection_delay,
                     execution_delay_ms=execution_delay,
                     total_delay_ms=total_delay,
+                    requested_size=requested_size,
+                    source_position_fraction=source_position_fraction,
+                    source_wallet_position_before=source_position_before,
+                    position_mismatch_reason=position_mismatch_reason,
                 )
 
-                pos = db.get_position(conn, token_id)
+                wallet_pos = db.get_wallet_position(conn, trade.wallet, token_id)
                 if side_str == "BUY":
-                    pos["cost_basis"] += shares_filled * avg_paper_price
-                    pos["size"] += shares_filled
-                elif side_str == "SELL" and pos["size"] > 0:
-                    avg_entry = pos["cost_basis"] / pos["size"]
-                    shares_to_close = min(shares_filled, pos["size"])
-                    pos["realized_pnl"] += shares_to_close * (avg_paper_price - avg_entry)
-                    pos["size"] -= shares_to_close
-                    pos["cost_basis"] -= shares_to_close * avg_entry
+                    wallet_pos["cost_basis"] += shares_filled * avg_paper_price
+                    wallet_pos["size"] += shares_filled
+                elif side_str == "SELL" and wallet_pos["size"] > 0:
+                    avg_entry = wallet_pos["cost_basis"] / wallet_pos["size"]
+                    shares_to_close = min(shares_filled, wallet_pos["size"])
+                    wallet_pos["realized_pnl"] += shares_to_close * (avg_paper_price - avg_entry)
+                    wallet_pos["size"] -= shares_to_close
+                    wallet_pos["cost_basis"] -= shares_to_close * avg_entry
 
                     if shares_filled > shares_to_close:
                         log.warning(
@@ -275,12 +311,21 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace, run_control
                             token_id=token_id,
                             shares_filled=round(shares_filled, 6),
                             shares_closed=round(shares_to_close, 6),
+                            wallet=trade.wallet,
                         )
-                    if pos["size"] <= 0.0001:
-                        pos["size"] = 0
-                        pos["cost_basis"] = 0
+                    if wallet_pos["size"] <= 0.0001:
+                        wallet_pos["size"] = 0
+                        wallet_pos["cost_basis"] = 0
 
-                db.upsert_position(conn, token_id, pos["size"], pos["cost_basis"], pos["realized_pnl"])
+                db.upsert_wallet_position(
+                    conn,
+                    trade.wallet,
+                    token_id,
+                    wallet_pos["size"],
+                    wallet_pos["cost_basis"],
+                    wallet_pos["realized_pnl"],
+                )
+                db.recompute_aggregate_position(conn, token_id)
 
                 log.info(
                     f"  Paper fill: {shares_filled:.1f} @ ${avg_paper_price:.4f} | "
@@ -288,10 +333,21 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace, run_control
                     f"  {ob_summary}"
                 )
             else:
-                no_fill_reason = (
-                    f"Insufficient liquidity: needed ${desired_dollars:.2f}, "
-                    f"book had ${total_ask_liq:.2f} ask-side / ${total_bid_liq:.2f} bid-side"
-                )
+                if side_str == "BUY":
+                    no_fill_reason = (
+                        f"Insufficient liquidity: needed ${args.size:.2f}, "
+                        f"book had ${total_ask_liq:.2f} ask-side / ${total_bid_liq:.2f} bid-side"
+                    )
+                else:
+                    desired_sell_size = float(requested_size or 0.0)
+                    if desired_sell_size <= 0.0001 and position_mismatch_reason:
+                        no_fill_reason = position_mismatch_reason
+                    else:
+                        top_bid_shares = sum(float(b['size']) for b in bids)
+                        no_fill_reason = (
+                            f"Insufficient sell liquidity: needed {desired_sell_size:.4f} shares, "
+                            f"book showed {top_bid_shares:.4f} bid shares"
+                        )
                 db.insert_paper_trade(
                     conn, target_trade_id=target_trade_id, token_id=token_id,
                     side=side_str, size=0.0, avg_price=0.0,
@@ -301,6 +357,10 @@ async def on_transaction(trade: TradeData, args: argparse.Namespace, run_control
                     execution_delay_ms=execution_delay,
                     total_delay_ms=total_delay,
                     no_fill_reason=no_fill_reason,
+                    requested_size=requested_size,
+                    source_position_fraction=source_position_fraction,
+                    source_wallet_position_before=source_position_before,
+                    position_mismatch_reason=position_mismatch_reason,
                 )
                 log.warning(f"Not enough orderbook liquidity to fill paper trade\n  {ob_summary}")
 
@@ -422,12 +482,15 @@ async def main():
         db.set_state(conn, "last_start", str(time.time()))
         db.set_state(conn, "paper_size", str(args.size))
 
+    from src.monitor import TradeMonitor
+
     monitor = TradeMonitor()
     run_control = RunControl(args.max_trades)
     monitor.on("transaction", partial(on_transaction, args=args, run_control=run_control, monitor=monitor))
 
     try:
         if args.run_resolution_inline:
+            from src.resolution_worker import ResolutionWorker
             resolution_worker = ResolutionWorker(db_path=args.db, poll_interval_seconds=1800)
             asyncio.create_task(resolution_worker.run())
             log.info("Resolution worker running inline with live simulator")

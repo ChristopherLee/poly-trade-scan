@@ -3,6 +3,11 @@ import logging
 import sys
 from typing import Any
 
+RESERVED_LOG_RECORD_FIELDS = set(logging.makeLogRecord({}).__dict__.keys()) | {
+    "message",
+    "asctime",
+}
+
 
 def hyperlink(url: str, text: str) -> str:
     """Create a clickable terminal hyperlink (OSC 8)."""
@@ -87,7 +92,13 @@ class StructuredLogger(logging.Logger):
         if extra is None:
             extra = {}
         extra.update(kwargs)
-        super()._log(level, msg, args, exc_info=exc_info, extra=extra)
+
+        # Avoid collisions with built-in LogRecord attributes such as `message`.
+        safe_extra = {
+            (f"extra_{key}" if key in RESERVED_LOG_RECORD_FIELDS else key): value
+            for key, value in extra.items()
+        }
+        super()._log(level, msg, args, exc_info=exc_info, extra=safe_extra)
 
     def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
         if self.isEnabledFor(logging.DEBUG):

@@ -411,7 +411,7 @@
 
             <div class="wallet-section">
                 <div class="wallet-section-header">
-                    <h4>Derived Positions</h4>
+                    <h4>Current Open Positions</h4>
                     <span id="wallet-positions-meta" class="section-meta"></span>
                 </div>
                 <div class="table-wrapper wallet-table-wrapper">
@@ -442,7 +442,7 @@
 
             <div class="wallet-section">
                 <div class="wallet-section-header">
-                    <h4>Tracked Trades</h4>
+                    <h4>Tracked Trades + Derived Position Effects</h4>
                     <span id="wallet-trades-meta" class="section-meta"></span>
                 </div>
                 <div class="table-wrapper wallet-table-wrapper">
@@ -451,15 +451,22 @@
                             <tr>
                                 <th class="sortable" data-sort-type="time">Time</th>
                                 <th class="sortable" data-sort-type="string">Market</th>
+                                <th class="sortable" data-sort-type="string">Outcome</th>
                                 <th class="sortable" data-sort-type="string">Side</th>
                                 <th class="sortable" data-sort-type="string">Position Effect</th>
-                                <th class="sortable" data-sort-type="number">Target</th>
-                                <th class="sortable" data-sort-type="number">Paper</th>
-                                <th class="sortable" data-sort-type="number">Size</th>
+                                <th class="sortable" data-sort-type="number">Target Size</th>
+                                <th class="sortable" data-sort-type="number">Target Price</th>
+                                <th class="sortable" data-sort-type="number">Target Cost</th>
+                                <th class="sortable" data-sort-type="number">Paper Requested</th>
+                                <th class="sortable" data-sort-type="number">Paper Filled</th>
+                                <th class="sortable" data-sort-type="number">Paper Price</th>
+                                <th class="sortable" data-sort-type="number">Source Pos Before</th>
+                                <th class="sortable" data-sort-type="number">Exit %</th>
                                 <th class="sortable" data-sort-type="number">Slippage</th>
                                 <th class="sortable" data-sort-type="number">Trade PnL</th>
+                                <th class="sortable" data-sort-type="number">Realized PnL</th>
                                 <th class="sortable" data-sort-type="number">Latency</th>
-                                <th class="sortable" data-sort-type="string">Fill</th>
+                                <th class="sortable" data-sort-type="string">Fill / Mismatch</th>
                                 <th>Book</th>
                             </tr>
                         </thead>

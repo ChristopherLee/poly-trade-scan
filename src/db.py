@@ -18,15 +18,15 @@ INDEX_STATEMENTS = (
     "CREATE INDEX IF NOT EXISTS idx_ob_target ON orderbook_snapshots(target_trade_id)",
     "CREATE INDEX IF NOT EXISTS idx_ob_token ON orderbook_snapshots(token_id)",
     "CREATE INDEX IF NOT EXISTS idx_positions_updated_at ON positions(updated_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_wallet_positions_wallet_updated ON wallet_positions(wallet, updated_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_wallet_positions_token_updated ON wallet_positions(token_id, updated_at DESC)",
 )
 
 
 def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
-    """Return a connection with WAL mode and row_factory."""
+    """Return a configured connection for regular reads and writes."""
     conn = sqlite3.connect(db_path or str(DB_PATH), timeout=30)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
@@ -58,6 +58,8 @@ def transaction(conn: Optional[sqlite3.Connection] = None, db_path: Optional[str
 def init_db(db_path: Optional[str] = None) -> None:
     """Create all tables if they don't exist."""
     conn = get_connection(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
     cur = conn.cursor()
 
     cur.executescript("""
@@ -153,6 +155,18 @@ def init_db(db_path: Optional[str] = None) -> None:
         FOREIGN KEY (token_id) REFERENCES markets(token_id)
     );
 
+    CREATE TABLE IF NOT EXISTS wallet_positions (
+        wallet          TEXT NOT NULL,
+        token_id        TEXT NOT NULL,
+        size            REAL DEFAULT 0,
+        cost_basis      REAL DEFAULT 0,
+        realized_pnl    REAL DEFAULT 0,
+        updated_at      REAL,
+        PRIMARY KEY (wallet, token_id),
+        FOREIGN KEY (wallet) REFERENCES wallets(address),
+        FOREIGN KEY (token_id) REFERENCES markets(token_id)
+    );
+
     CREATE TABLE IF NOT EXISTS run_state (
         key   TEXT PRIMARY KEY,
         value TEXT
@@ -183,6 +197,18 @@ def _migrate(conn: sqlite3.Connection) -> None:
     }
     if "no_fill_reason" not in paper_cols:
         conn.execute("ALTER TABLE paper_trades ADD COLUMN no_fill_reason TEXT")
+        conn.commit()
+    if "requested_size" not in paper_cols:
+        conn.execute("ALTER TABLE paper_trades ADD COLUMN requested_size REAL")
+        conn.commit()
+    if "source_position_fraction" not in paper_cols:
+        conn.execute("ALTER TABLE paper_trades ADD COLUMN source_position_fraction REAL")
+        conn.commit()
+    if "source_wallet_position_before" not in paper_cols:
+        conn.execute("ALTER TABLE paper_trades ADD COLUMN source_wallet_position_before REAL")
+        conn.commit()
+    if "position_mismatch_reason" not in paper_cols:
+        conn.execute("ALTER TABLE paper_trades ADD COLUMN position_mismatch_reason TEXT")
         conn.commit()
 
     market_cols = {
@@ -259,8 +285,88 @@ def _migrate(conn: sqlite3.Connection) -> None:
         """)
         conn.commit()
 
+    if "wallet_positions" not in existing_tables:
+        conn.executescript("""
+        CREATE TABLE wallet_positions (
+            wallet          TEXT NOT NULL,
+            token_id        TEXT NOT NULL,
+            size            REAL DEFAULT 0,
+            cost_basis      REAL DEFAULT 0,
+            realized_pnl    REAL DEFAULT 0,
+            updated_at      REAL,
+            PRIMARY KEY (wallet, token_id),
+            FOREIGN KEY (wallet) REFERENCES wallets(address),
+            FOREIGN KEY (token_id) REFERENCES markets(token_id)
+        );
+        """)
+        conn.commit()
+
+    _backfill_wallet_positions(conn)
+
     for statement in INDEX_STATEMENTS:
         conn.execute(statement)
+    conn.commit()
+
+
+def _backfill_wallet_positions(conn: sqlite3.Connection) -> None:
+    """Populate wallet_positions and recompute aggregate positions when missing."""
+    wallet_position_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM wallet_positions"
+    ).fetchone()["c"]
+    if wallet_position_count:
+        _recompute_all_aggregate_positions(conn)
+        return
+
+    rows = conn.execute(
+        """
+        SELECT tt.wallet, pt.token_id, pt.side, pt.size, pt.avg_price,
+               pt.created_at, pt.id
+        FROM paper_trades pt
+        JOIN target_trades tt ON tt.id = pt.target_trade_id
+        WHERE COALESCE(pt.no_fill_reason, '') = ''
+          AND COALESCE(pt.size, 0) > 0
+        ORDER BY pt.created_at ASC, pt.id ASC
+        """
+    ).fetchall()
+
+    for row in rows:
+        wallet = row["wallet"]
+        token_id = row["token_id"]
+        pos = get_wallet_position(conn, wallet, token_id)
+        size = float(row["size"] or 0.0)
+        price = float(row["avg_price"] or 0.0)
+        if str(row["side"] or "").upper() == "BUY":
+            pos["size"] += size
+            pos["cost_basis"] += size * price
+        elif pos["size"] > 0.0001:
+            avg_entry = pos["cost_basis"] / pos["size"]
+            shares_to_close = min(size, pos["size"])
+            pos["realized_pnl"] += shares_to_close * (price - avg_entry)
+            pos["size"] -= shares_to_close
+            pos["cost_basis"] -= shares_to_close * avg_entry
+            if pos["size"] <= 0.0001:
+                pos["size"] = 0.0
+                pos["cost_basis"] = 0.0
+        upsert_wallet_position(
+            conn,
+            wallet,
+            token_id,
+            pos["size"],
+            pos["cost_basis"],
+            pos["realized_pnl"],
+        )
+
+    _recompute_all_aggregate_positions(conn)
+
+
+def _recompute_all_aggregate_positions(conn: sqlite3.Connection) -> None:
+    token_ids = [
+        row["token_id"]
+        for row in conn.execute("SELECT DISTINCT token_id FROM wallet_positions").fetchall()
+    ]
+    conn.execute("DELETE FROM positions")
+    for token_id in token_ids:
+        recompute_aggregate_position(conn, token_id)
     conn.commit()
 
 
@@ -374,16 +480,22 @@ def insert_paper_trade(conn: sqlite3.Connection, target_trade_id: int,
                        cost_usd: float, slippage: float,
                        orderbook_latency_ms: float, detection_delay_ms: float,
                        execution_delay_ms: float, total_delay_ms: float,
-                       no_fill_reason: Optional[str] = None) -> int:
+                       no_fill_reason: Optional[str] = None,
+                       requested_size: Optional[float] = None,
+                       source_position_fraction: Optional[float] = None,
+                       source_wallet_position_before: Optional[float] = None,
+                       position_mismatch_reason: Optional[str] = None) -> int:
     cur = conn.execute("""
         INSERT INTO paper_trades
             (target_trade_id, token_id, side, size, avg_price, cost_usd, slippage,
              orderbook_latency_ms, detection_delay_ms, execution_delay_ms, total_delay_ms,
-             no_fill_reason, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             no_fill_reason, requested_size, source_position_fraction,
+             source_wallet_position_before, position_mismatch_reason, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (target_trade_id, token_id, side, size, avg_price, cost_usd, slippage,
           orderbook_latency_ms, detection_delay_ms, execution_delay_ms,
-          total_delay_ms, no_fill_reason, time.time()))
+          total_delay_ms, no_fill_reason, requested_size, source_position_fraction,
+          source_wallet_position_before, position_mismatch_reason, time.time()))
     conn.commit()
     return cur.lastrowid
 
@@ -440,6 +552,107 @@ def upsert_position(conn: sqlite3.Connection, token_id: str,
             updated_at = excluded.updated_at
     """, (token_id, size, cost_basis, realized_pnl, time.time()))
     conn.commit()
+
+
+def get_wallet_position(conn: sqlite3.Connection, wallet: str, token_id: str) -> dict:
+    row = conn.execute(
+        "SELECT * FROM wallet_positions WHERE wallet = ? AND token_id = ?",
+        (wallet.lower(), token_id),
+    ).fetchone()
+    if row:
+        return dict(row)
+    return {
+        "wallet": wallet.lower(),
+        "token_id": token_id,
+        "size": 0.0,
+        "cost_basis": 0.0,
+        "realized_pnl": 0.0,
+    }
+
+
+def upsert_wallet_position(conn: sqlite3.Connection, wallet: str, token_id: str,
+                           size: float, cost_basis: float, realized_pnl: float) -> None:
+    conn.execute("""
+        INSERT INTO wallet_positions (wallet, token_id, size, cost_basis, realized_pnl, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(wallet, token_id) DO UPDATE SET
+            size = excluded.size,
+            cost_basis = excluded.cost_basis,
+            realized_pnl = excluded.realized_pnl,
+            updated_at = excluded.updated_at
+    """, (wallet.lower(), token_id, size, cost_basis, realized_pnl, time.time()))
+    conn.commit()
+
+
+def recompute_aggregate_position(conn: sqlite3.Connection, token_id: str) -> None:
+    row = conn.execute(
+        """
+        SELECT COALESCE(SUM(size), 0) AS size,
+               COALESCE(SUM(cost_basis), 0) AS cost_basis,
+               COALESCE(SUM(realized_pnl), 0) AS realized_pnl
+        FROM wallet_positions
+        WHERE token_id = ?
+        """,
+        (token_id,),
+    ).fetchone()
+    upsert_position(
+        conn,
+        token_id,
+        float(row["size"] or 0.0),
+        float(row["cost_basis"] or 0.0),
+        float(row["realized_pnl"] or 0.0),
+    )
+
+
+def get_target_wallet_open_size_before_trade(conn: sqlite3.Connection, wallet: str,
+                                             token_id: str, target_trade_id: int) -> float:
+    row = conn.execute(
+        """
+        SELECT COALESCE(SUM(
+            CASE
+                WHEN UPPER(side) = 'BUY' THEN size
+                WHEN UPPER(side) = 'SELL' THEN -size
+                ELSE 0
+            END
+        ), 0) AS open_size
+        FROM target_trades
+        WHERE wallet = ? AND token_id = ? AND id < ?
+        """,
+        (wallet.lower(), token_id, target_trade_id),
+    ).fetchone()
+    return max(0.0, float(row["open_size"] or 0.0))
+
+
+def settle_wallet_positions_for_token(conn: sqlite3.Connection, token_id: str, payout_value: float) -> None:
+    rows = conn.execute(
+        "SELECT * FROM wallet_positions WHERE token_id = ? AND size > 0.0001",
+        (token_id,),
+    ).fetchall()
+    if not rows:
+        pos = get_position(conn, token_id)
+        if pos and float(pos["size"] or 0.0) > 0.0001:
+            realized_gain = (payout_value * pos["size"]) - pos["cost_basis"]
+            upsert_position(
+                conn,
+                token_id,
+                0.0,
+                0.0,
+                float(pos["realized_pnl"] or 0.0) + realized_gain,
+            )
+        return
+
+    for row in rows:
+        pos = dict(row)
+        realized_gain = (payout_value * pos["size"]) - pos["cost_basis"]
+        upsert_wallet_position(
+            conn,
+            pos["wallet"],
+            token_id,
+            0.0,
+            0.0,
+            float(pos["realized_pnl"] or 0.0) + realized_gain,
+        )
+    recompute_aggregate_position(conn, token_id)
 
 
 # ── Run state helpers (for restartability) ────────────────────────

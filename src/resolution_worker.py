@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from src import db
-from src.api.polymarket import PolymarketWSClient
 from src.utils.logging import get_logger
 
 ssl_context = ssl._create_unverified_context()
@@ -173,8 +172,7 @@ class ResolutionWorker:
             pos = db.get_position(conn, tid)
             if pos and pos["size"] > 0.0001:
                 realized_gain = (payout_value * pos["size"]) - pos["cost_basis"]
-                new_realized = pos["realized_pnl"] + realized_gain
-                db.upsert_position(conn, tid, 0.0, 0.0, new_realized)
+                db.settle_wallet_positions_for_token(conn, tid, payout_value)
 
                 mkt = conn.execute(
                     "SELECT question FROM markets WHERE token_id=?", (tid,)
@@ -453,6 +451,8 @@ class ResolutionWorker:
         """Run websocket listener plus periodic poll loop."""
         db.init_db(self.db_path)
         log.info("Starting resolution worker", poll_interval_seconds=self.poll_interval_seconds, db_path=self.db_path or "paper_trades.db")
+
+        from src.api.polymarket import PolymarketWSClient
 
         pm_client = PolymarketWSClient()
         pm_client.on("market_resolved", self.on_market_resolved)

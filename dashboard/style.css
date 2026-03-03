@@ -615,6 +615,14 @@ body {
     gap: 0.4rem;
 }
 
+.wallet-trade-note {
+    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--text-muted);
+    max-width: 220px;
+}
+
 /* ── Responsive ───────────────────────────────────────────────── */
 @media (max-width: 1400px) {
     #leaderboard-wallets-table,

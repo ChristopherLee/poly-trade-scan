@@ -81,7 +81,49 @@ def main() -> None:
             total_delay_ms=370,
         )
 
-        db.upsert_position(conn, token_id=token_id, size=40.3226, cost_basis=25.0, realized_pnl=0.0)
+        sell_target_id = db.insert_target_trade(
+            conn,
+            wallet=wallet,
+            token_id=token_id,
+            tx_hash="0xsampletxhashsell",
+            block_number=12345690,
+            side="SELL",
+            size=37.5,
+            price=0.66,
+            cost_usd=24.75,
+            onchain_ts=now - 5,
+            detected_ts=now - 4,
+        )
+
+        db.insert_orderbook_snapshot(
+            conn,
+            target_trade_id=sell_target_id,
+            token_id=token_id,
+            side="SELL",
+            bids=[{"price": 0.66, "size": 25}, {"price": 0.65, "size": 200}],
+            asks=[{"price": 0.67, "size": 100}, {"price": 0.68, "size": 300}],
+        )
+
+        db.insert_paper_trade(
+            conn,
+            target_trade_id=sell_target_id,
+            token_id=token_id,
+            side="SELL",
+            size=20.1613,
+            avg_price=0.66,
+            cost_usd=13.31,
+            slippage=0.0,
+            orderbook_latency_ms=95,
+            detection_delay_ms=220,
+            execution_delay_ms=90,
+            total_delay_ms=310,
+            requested_size=20.1613,
+            source_position_fraction=0.5,
+            source_wallet_position_before=75.0,
+        )
+
+        db.upsert_wallet_position(conn, wallet=wallet, token_id=token_id, size=20.1613, cost_basis=12.5, realized_pnl=0.81)
+        db.recompute_aggregate_position(conn, token_id)
         db.set_state(conn, "sample_generated_at", str(now))
 
     print(f"Sample DB written to {SAMPLE_DB_PATH}")

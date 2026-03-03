@@ -7,9 +7,11 @@ from urllib.parse import urlparse, parse_qs
 import urllib.request
 
 from src.db import get_connection, init_db
+from src.utils.logging import get_logger
 
 STATIC_DIR = Path(__file__).parent / "dashboard"
 PORT = 8050
+log = get_logger(__name__)
 
 
 def fetch_json(url: str):
@@ -98,7 +100,9 @@ def _build_wallet_detail_payload(conn, wallet: str):
                tt.cost_usd as target_cost, tt.onchain_ts, tt.detected_ts, tt.created_at as target_created_at,
                pt.id as paper_id, pt.side as paper_side, pt.size as paper_size, pt.avg_price as paper_price,
                pt.cost_usd as paper_cost, pt.slippage, pt.orderbook_latency_ms, pt.detection_delay_ms,
-               pt.execution_delay_ms, pt.total_delay_ms, pt.no_fill_reason, pt.created_at as paper_created_at,
+               pt.execution_delay_ms, pt.total_delay_ms, pt.no_fill_reason, pt.requested_size,
+               pt.source_position_fraction, pt.source_wallet_position_before, pt.position_mismatch_reason,
+               pt.created_at as paper_created_at,
                m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category,
                m.group_item_title, m.slug,
                (SELECT pt2.avg_price FROM paper_trades pt2
@@ -555,7 +559,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                    pt.id as paper_id, pt.size as paper_size, pt.avg_price as paper_price,
                    pt.cost_usd as paper_cost, pt.slippage,
                    pt.orderbook_latency_ms, pt.detection_delay_ms, pt.execution_delay_ms, pt.total_delay_ms,
-                   pt.no_fill_reason,
+                   pt.no_fill_reason, pt.requested_size, pt.source_position_fraction,
+                   pt.source_wallet_position_before, pt.position_mismatch_reason,
                    m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category, m.group_item_title, m.slug
             FROM target_trades tt
             LEFT JOIN paper_trades pt ON pt.target_trade_id = tt.id
@@ -791,19 +796,30 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self._json_response(rows)
 
     def log_message(self, format, *args):
-        """Suppress default access logs for cleaner output."""
-        pass
+        request_log_line = format % args
+        log.info(
+            "http_request",
+            client_ip=self.address_string(),
+            method=getattr(self, "command", ""),
+            path=getattr(self, "path", ""),
+            status=getattr(self, "_last_response_status", None),
+            request_log_line=request_log_line,
+        )
+
+    def send_response(self, code, message=None):
+        self._last_response_status = code
+        super().send_response(code, message)
 
 
 def main():
     init_db()
     STATIC_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Dashboard running at http://localhost:{PORT}")
+    log.info("dashboard_start", url=f"http://localhost:{PORT}", port=PORT)
     server = HTTPServer(("0.0.0.0", PORT), DashboardHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nDashboard stopped.")
+        log.info("dashboard_stop")
         server.server_close()
 
 

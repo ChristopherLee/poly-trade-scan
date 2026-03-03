@@ -549,6 +549,26 @@ function walletFillBadge(trade) {
     return '<span class="badge badge-buy">Filled</span>';
 }
 
+function formatShareValue(value, decimals = 2) {
+    if (value == null || value === '' || Number.isNaN(Number(value))) return '-';
+    return Number(value).toFixed(decimals);
+}
+
+function formatPriceValue(value) {
+    if (value == null || value === '' || Number.isNaN(Number(value))) return '-';
+    return `$${Number(value).toFixed(4)}`;
+}
+
+function renderWalletTradeStatus(trade) {
+    const parts = [walletFillBadge(trade)];
+    if (trade.position_mismatch_reason) {
+        parts.push(`<div class="wallet-trade-note">${escapeHtml(trade.position_mismatch_reason)}</div>`);
+    } else if (trade.no_fill_reason) {
+        parts.push(`<div class="wallet-trade-note">${escapeHtml(trade.no_fill_reason)}</div>`);
+    }
+    return parts.join('');
+}
+
 function walletTradeRowClass(trade) {
     if (trade.no_fill_reason || (trade.paper_size || 0) <= 0) return 'wallet-row-neutral';
     if ((trade.trade_pnl || 0) > 0.01) return 'wallet-row-positive';
@@ -605,6 +625,7 @@ async function openWalletDetail(address, options = {}) {
     const walletInfo = data.wallet || {};
     const summary = data.summary || {};
     const positions = Array.isArray(data.positions) ? data.positions : [];
+    const openPositions = positions.filter(position => String(position.status || '').toLowerCase() === 'open');
     const trades = Array.isArray(data.trades) ? data.trades : [];
     const alias = walletInfo.alias || fmtAddr(walletInfo.address || wallet);
     const profileUrl = `https://polymarket.com/profile/${walletInfo.address || wallet}`;
@@ -623,15 +644,15 @@ async function openWalletDetail(address, options = {}) {
     document.getElementById('wallet-modal-summary').innerHTML = renderWalletSummary(summary);
 
     document.getElementById('wallet-positions-meta').textContent =
-        `${positions.length} markets · ${summary.active_positions || 0} open · ${summary.resolved_positions || 0} resolved`;
+        `${openPositions.length} open markets · ${positions.length} total derived positions`;
     document.getElementById('wallet-trades-meta').textContent =
-        `${summary.total_target_trades || 0} trades · ${summary.filled_trades || 0} filled · ${summary.no_fill_trades || 0} no fill`;
+        `${summary.total_target_trades || 0} tracked trades · ${summary.filled_trades || 0} filled · ${summary.no_fill_trades || 0} no fill`;
 
     const positionsTbody = document.getElementById('wallet-positions-tbody');
-    if (!positions.length) {
-        positionsTbody.innerHTML = '<tr><td colspan="15" style="text-align:center;">No copied positions for this wallet yet.</td></tr>';
+    if (!openPositions.length) {
+        positionsTbody.innerHTML = '<tr><td colspan="15" style="text-align:center;">No open copied positions for this wallet.</td></tr>';
     } else {
-        positionsTbody.innerHTML = positions.map(position => {
+        positionsTbody.innerHTML = openPositions.map(position => {
             const outcomes = Array.isArray(position.outcomes) ? position.outcomes : [];
             const outcomeLabel = outcomes[position.outcome_idx] || '?';
             const statusBadge = position.status === 'Open'
@@ -667,7 +688,7 @@ async function openWalletDetail(address, options = {}) {
 
     const tradesTbody = document.getElementById('wallet-trades-tbody');
     if (!trades.length) {
-        tradesTbody.innerHTML = '<tr><td colspan="12" style="text-align:center;">No tracked trades for this wallet yet.</td></tr>';
+        tradesTbody.innerHTML = '<tr><td colspan="19" style="text-align:center;">No tracked trades for this wallet yet.</td></tr>';
     } else {
         tradesTbody.innerHTML = trades.map(trade => {
             const outcomes = Array.isArray(trade.outcomes) ? trade.outcomes : [];
@@ -679,23 +700,32 @@ async function openWalletDetail(address, options = {}) {
             const sideBadge = trade.target_side === 'BUY'
                 ? '<span class="badge badge-buy">BUY</span>'
                 : '<span class="badge badge-sell">SELL</span>';
-            const fillCell = walletFillBadge(trade);
             const tradePnl = trade.trade_pnl == null ? '-' : fmt$(Number(trade.trade_pnl || 0));
             const tradePnlClass = trade.trade_pnl == null ? '' : pnlClass(Number(trade.trade_pnl || 0));
+            const realizedPnl = trade.realized_pnl == null ? '-' : fmt$(Number(trade.realized_pnl || 0));
+            const realizedPnlClass = trade.realized_pnl == null ? '' : pnlClass(Number(trade.realized_pnl || 0));
+            const exitPercent = trade.source_position_fraction == null ? '-' : fmtPercent(Number(trade.source_position_fraction || 0) * 100);
 
             return `
                 <tr class="${walletTradeRowClass(trade)}">
                     <td><a href="https://polygonscan.com/tx/${trade.tx_hash}" target="_blank" class="tx-link">${fmtTime(trade.onchain_ts)}</a></td>
-                    <td class="truncate" title="${escapeHtml(question)}">${marketLink}<br><small style="color:var(--text-muted)">${escapeHtml(outcomeLabel)}</small></td>
+                    <td class="truncate" title="${escapeHtml(question)}">${marketLink}</td>
+                    <td>${escapeHtml(outcomeLabel)}</td>
                     <td>${sideBadge}</td>
                     <td>${walletEffectBadge(trade.position_effect)}</td>
-                    <td class="mono">$${Number(trade.target_price || 0).toFixed(4)}</td>
-                    <td class="mono">${trade.paper_id ? `$${Number(trade.paper_price || 0).toFixed(4)}` : '-'}</td>
-                    <td class="mono">${trade.paper_id ? Number(trade.paper_size || 0).toFixed(1) : '-'}</td>
+                    <td class="mono">${formatShareValue(trade.target_size, 2)}</td>
+                    <td class="mono">${formatPriceValue(trade.target_price)}</td>
+                    <td class="mono">${fmt$(Number(trade.target_cost || 0))}</td>
+                    <td class="mono">${formatShareValue(trade.requested_size, 2)}</td>
+                    <td class="mono">${trade.paper_id ? formatShareValue(trade.paper_size, 2) : '-'}</td>
+                    <td class="mono">${trade.paper_id ? formatPriceValue(trade.paper_price) : '-'}</td>
+                    <td class="mono">${formatShareValue(trade.source_wallet_position_before, 2)}</td>
+                    <td class="mono">${exitPercent}</td>
                     <td class="mono ${pnlClass(-(trade.slippage || 0))}">${trade.paper_id ? Number(trade.slippage || 0).toFixed(4) : '-'}</td>
                     <td class="mono ${tradePnlClass}">${tradePnl}</td>
+                    <td class="mono ${realizedPnlClass}">${realizedPnl}</td>
                     <td class="mono">${trade.total_delay_ms != null ? `${Number(trade.total_delay_ms).toFixed(0)}ms` : '-'}</td>
-                    <td>${fillCell}</td>
+                    <td>${renderWalletTradeStatus(trade)}</td>
                     <td>${trade.paper_id ? `<button class="btn btn-sm btn-ghost" onclick="openOrderBook(${trade.target_id})">Book</button>` : '-'}</td>
                 </tr>
             `;
