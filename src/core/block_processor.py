@@ -92,6 +92,6 @@ class BlockProcessor:
             wallet=matching_order.maker,
             token_id=matching_order.token_id,
             side=matching_order.side,
-            maker_amount=matching_order.maker_amount,
-            taker_amount=matching_order.taker_amount,
+            maker_amount=matching_order.fill_maker_amount,
+            taker_amount=matching_order.fill_taker_amount,
         )

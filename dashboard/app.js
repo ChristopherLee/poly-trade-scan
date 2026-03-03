@@ -5,6 +5,7 @@ let lastTradeFilterKey = '';
 let pnlChart = null;
 let latencyChart = null;
 let categoryPnlChart = null;
+let walletPnlChart = null;
 let autoRefreshTimer = null;
 let leaderboardWalletCache = [];
 let activeWalletDetail = null;
@@ -610,6 +611,93 @@ function renderWalletSummary(summary) {
     `).join('');
 }
 
+function destroyWalletPnlChart() {
+    if (walletPnlChart) {
+        walletPnlChart.destroy();
+        walletPnlChart = null;
+    }
+}
+
+function renderWalletPnlTimeline(timeline) {
+    const chartMeta = document.getElementById('wallet-pnl-meta');
+    destroyWalletPnlChart();
+
+    if (!Array.isArray(timeline) || !timeline.length) {
+        chartMeta.textContent = 'No filled trade history yet';
+        return;
+    }
+
+    chartMeta.textContent = `${timeline.length} points · ${timeline[timeline.length - 1].open_positions || 0} open positions`;
+
+    const labels = timeline.map(point => fmtTime(point.ts));
+    const realized = timeline.map(point => Number(point.realized_pnl || 0));
+    const unrealized = timeline.map(point => Number(point.unrealized_pnl || 0));
+    const total = timeline.map(point => Number(point.total_pnl || 0));
+
+    const ctx = document.getElementById('wallet-pnl-chart').getContext('2d');
+    walletPnlChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Realized PnL ($)',
+                    data: realized,
+                    borderColor: 'rgba(6, 182, 212, 0.95)',
+                    backgroundColor: 'rgba(6, 182, 212, 0.14)',
+                    fill: false,
+                    tension: 0.25,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+                {
+                    label: 'Unrealized PnL ($)',
+                    data: unrealized,
+                    borderColor: 'rgba(245, 158, 11, 0.95)',
+                    backgroundColor: 'rgba(245, 158, 11, 0.14)',
+                    fill: false,
+                    tension: 0.25,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+                {
+                    label: 'Total PnL ($)',
+                    data: total,
+                    borderColor: 'rgba(99, 102, 241, 1)',
+                    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                    fill: true,
+                    tension: 0.25,
+                    pointRadius: 0,
+                    borderWidth: 2.5,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
+            plugins: {
+                legend: { labels: { color: '#94a3b8', font: { family: 'Inter' } } },
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#64748b', maxTicksLimit: 10 },
+                    grid: { color: '#1e293b' },
+                },
+                y: {
+                    ticks: {
+                        color: '#64748b',
+                        callback: (value) => fmt$(Number(value || 0)),
+                    },
+                    grid: { color: '#1e293b' },
+                }
+            }
+        }
+    });
+}
+
 async function openWalletDetail(address, options = {}) {
     const wallet = String(address || '').trim().toLowerCase();
     if (!wallet) return;
@@ -627,6 +715,7 @@ async function openWalletDetail(address, options = {}) {
     const positions = Array.isArray(data.positions) ? data.positions : [];
     const openPositions = positions.filter(position => String(position.status || '').toLowerCase() === 'open');
     const trades = Array.isArray(data.trades) ? data.trades : [];
+    const timeline = Array.isArray(data.pnl_timeline) ? data.pnl_timeline : [];
     const alias = walletInfo.alias || fmtAddr(walletInfo.address || wallet);
     const profileUrl = `https://polymarket.com/profile/${walletInfo.address || wallet}`;
     const statusLabel = walletInfo.tracking_enabled ? 'Tracking enabled' : 'Tracking disabled';
@@ -642,6 +731,7 @@ async function openWalletDetail(address, options = {}) {
         <span>${escapeHtml(walletInfo.source || 'manual')}</span>
     `;
     document.getElementById('wallet-modal-summary').innerHTML = renderWalletSummary(summary);
+    renderWalletPnlTimeline(timeline);
 
     document.getElementById('wallet-positions-meta').textContent =
         `${openPositions.length} open markets · ${positions.length} total derived positions`;
@@ -1143,6 +1233,7 @@ function closeModal(id) {
     document.getElementById(id).style.display = 'none';
     if (id === 'wallet-modal') {
         activeWalletDetail = null;
+        destroyWalletPnlChart();
     }
 }
 
@@ -1150,6 +1241,10 @@ function closeModal(id) {
 window.onclick = function (event) {
     if (event.target.classList.contains('modal')) {
         event.target.style.display = 'none';
+        if (event.target.id === 'wallet-modal') {
+            activeWalletDetail = null;
+            destroyWalletPnlChart();
+        }
     }
 }
 

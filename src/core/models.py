@@ -19,6 +19,8 @@ class DecodedOrder:
     side: int  # 0 = BUY, 1 = SELL
     signature_type: int
     signature: bytes
+    fill_maker_amount: int = 0
+    fill_taker_amount: int = 0
 
 
 @dataclass

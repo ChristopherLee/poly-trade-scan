@@ -52,6 +52,137 @@ def _decode_outcomes(value):
         return []
 
 
+def _mark_position_unrealized(state):
+    size = float(state.get("size") or 0.0)
+    cost_basis = float(state.get("cost_basis") or 0.0)
+    if size <= 0.0001:
+        return 0.0
+
+    if state.get("resolved"):
+        payout_value = float(state.get("payout_value") or 0.0)
+        return (payout_value * size) - cost_basis
+
+    last_price = state.get("last_price")
+    mark_price = float(last_price) if last_price is not None else (cost_basis / size)
+    return (mark_price * size) - cost_basis
+
+
+def _build_wallet_pnl_timeline(trade_rows, position_state):
+    timeline = []
+    if not trade_rows:
+        trade_rows = []
+
+    timeline_state = {}
+    cumulative_realized = 0.0
+    open_positions = 0
+
+    for trade in trade_rows:
+        token_id = trade["token_id"]
+        state = timeline_state.setdefault(
+            token_id,
+            {
+                "size": 0.0,
+                "cost_basis": 0.0,
+                "realized_pnl": 0.0,
+                "last_price": position_state.get(token_id, {}).get("last_price"),
+                "resolved": position_state.get(token_id, {}).get("resolved"),
+                "payout_value": position_state.get(token_id, {}).get("payout_value"),
+            },
+        )
+        final_state = position_state.get(token_id, {})
+        if final_state:
+            state["last_price"] = final_state.get("last_price")
+            state["resolved"] = final_state.get("resolved")
+            state["payout_value"] = final_state.get("payout_value")
+
+        filled = trade.get("paper_id") is not None and not trade.get("no_fill_reason") and (trade.get("paper_size") or 0) > 0
+        if filled:
+            side = (trade.get("paper_side") or trade.get("target_side") or "").upper()
+            paper_size = float(trade.get("paper_size") or 0.0)
+            paper_price = float(trade.get("paper_price") or 0.0)
+            paper_cost = float(trade.get("paper_cost") or 0.0)
+            was_open = state["size"] > 0.0001
+
+            if side == "BUY":
+                state["cost_basis"] += paper_cost
+                state["size"] += paper_size
+            elif side == "SELL" and state["size"] > 0.0001:
+                avg_entry = state["cost_basis"] / state["size"]
+                shares_to_close = min(paper_size, state["size"])
+                realized_delta = shares_to_close * (paper_price - avg_entry)
+                state["realized_pnl"] += realized_delta
+                cumulative_realized += realized_delta
+                state["size"] -= shares_to_close
+                state["cost_basis"] -= shares_to_close * avg_entry
+                if state["size"] <= 0.0001:
+                    state["size"] = 0.0
+                    state["cost_basis"] = 0.0
+
+            is_open = state["size"] > 0.0001
+            if not was_open and is_open:
+                open_positions += 1
+            elif was_open and not is_open:
+                open_positions = max(open_positions - 1, 0)
+
+        cumulative_unrealized = sum(_mark_position_unrealized(state) for state in timeline_state.values())
+        point_ts = trade.get("paper_created_at") or trade.get("target_created_at") or trade.get("onchain_ts")
+        timeline.append({
+            "ts": point_ts,
+            "realized_pnl": round(cumulative_realized, 2),
+            "unrealized_pnl": round(cumulative_unrealized, 2),
+            "total_pnl": round(cumulative_realized + cumulative_unrealized, 2),
+            "open_positions": open_positions,
+        })
+
+    settlement_events = []
+    for token_id, final_state in position_state.items():
+        if not final_state.get("resolved"):
+            continue
+        settlement_ts = final_state.get("wallet_position_updated_at")
+        payout_value = final_state.get("payout_value")
+        size = float(final_state.get("size") or 0.0)
+        cost_basis = float(final_state.get("cost_basis") or 0.0)
+        last_trade_ts = final_state.get("last_trade_ts") or 0
+        if settlement_ts is None or settlement_ts <= last_trade_ts or size <= 0.0001:
+            continue
+        settlement_events.append((float(settlement_ts), token_id, float(payout_value or 0.0)))
+
+    settlement_events.sort(key=lambda item: (item[0], item[1]))
+    for settlement_ts, token_id, payout_value in settlement_events:
+        state = timeline_state.setdefault(
+            token_id,
+            {
+                "size": 0.0,
+                "cost_basis": 0.0,
+                "realized_pnl": 0.0,
+                "last_price": None,
+                "resolved": True,
+                "payout_value": payout_value,
+            },
+        )
+        if state["size"] <= 0.0001:
+            continue
+        realized_delta = (payout_value * state["size"]) - state["cost_basis"]
+        state["resolved"] = True
+        state["payout_value"] = payout_value
+        state["realized_pnl"] += realized_delta
+        cumulative_realized += realized_delta
+        state["size"] = 0.0
+        state["cost_basis"] = 0.0
+        open_positions = max(open_positions - 1, 0)
+
+        cumulative_unrealized = sum(_mark_position_unrealized(state) for state in timeline_state.values())
+        timeline.append({
+            "ts": settlement_ts,
+            "realized_pnl": round(cumulative_realized, 2),
+            "unrealized_pnl": round(cumulative_unrealized, 2),
+            "total_pnl": round(cumulative_realized + cumulative_unrealized, 2),
+            "open_positions": open_positions,
+        })
+
+    return timeline
+
+
 def _build_wallet_detail_payload(conn, wallet: str):
     wallet_row = conn.execute(
         """
@@ -105,12 +236,14 @@ def _build_wallet_detail_payload(conn, wallet: str):
                pt.created_at as paper_created_at,
                m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category,
                m.group_item_title, m.slug,
+               wp.updated_at as wallet_position_updated_at,
                (SELECT pt2.avg_price FROM paper_trades pt2
                 WHERE pt2.token_id = tt.token_id
                 ORDER BY pt2.created_at DESC LIMIT 1) as last_price
         FROM target_trades tt
         LEFT JOIN paper_trades pt ON pt.target_trade_id = tt.id
         LEFT JOIN markets m ON m.token_id = tt.token_id
+        LEFT JOIN wallet_positions wp ON wp.wallet = tt.wallet AND wp.token_id = tt.token_id
         WHERE tt.wallet = ?
         ORDER BY COALESCE(pt.created_at, tt.created_at) ASC, tt.id ASC
         """,
@@ -146,6 +279,7 @@ def _build_wallet_detail_payload(conn, wallet: str):
                 "group_item_title": trade.get("group_item_title"),
                 "slug": trade.get("slug"),
                 "last_price": trade.get("last_price"),
+                "wallet_position_updated_at": trade.get("wallet_position_updated_at"),
                 "entry_ts": trade.get("onchain_ts"),
                 "last_trade_ts": trade.get("paper_created_at") or trade.get("target_created_at"),
                 "size": 0.0,
@@ -168,6 +302,11 @@ def _build_wallet_detail_payload(conn, wallet: str):
         state["group_item_title"] = trade.get("group_item_title") or state["group_item_title"]
         state["slug"] = trade.get("slug") or state["slug"]
         state["last_price"] = trade.get("last_price") if trade.get("last_price") is not None else state["last_price"]
+        state["wallet_position_updated_at"] = (
+            trade.get("wallet_position_updated_at")
+            if trade.get("wallet_position_updated_at") is not None
+            else state["wallet_position_updated_at"]
+        )
         state["entry_ts"] = min(x for x in [state["entry_ts"], trade.get("onchain_ts")] if x is not None)
         state["last_trade_ts"] = max(x for x in [state["last_trade_ts"], trade.get("paper_created_at") or trade.get("target_created_at")] if x is not None)
 
@@ -315,6 +454,7 @@ def _build_wallet_detail_payload(conn, wallet: str):
 
     positions.sort(key=lambda item: (item["status"] != "Open", item["total_pnl"]))
     trade_rows.reverse()
+    pnl_timeline = _build_wallet_pnl_timeline(list(reversed(trade_rows)), position_state)
 
     summary = {
         "total_target_trades": len(rows),
@@ -341,6 +481,7 @@ def _build_wallet_detail_payload(conn, wallet: str):
         "summary": summary,
         "positions": positions,
         "trades": trade_rows,
+        "pnl_timeline": pnl_timeline,
     }
 
 

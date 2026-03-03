@@ -1,0 +1,4 @@
+interface:
+  display_name: "Polymarket Discrepancy Audit"
+  short_description: "Audit DB trades against Polymarket APIs."
+  default_prompt: "Use $polymarket-discrepancy-audit to compare Polymarket activity and Gamma market data with the local paper trading database and summarize discrepancies."

@@ -48,16 +48,33 @@ class TransactionDecoder:
         """Extract all orders from decoded parameters."""
         orders = []
 
-        # decoded[0] = takerOrder, decoded[1] = makerOrders array
-        taker_order, maker_orders, *_ = decoded
+        taker_order, maker_orders, taker_fill_amount, taker_receive_amount, maker_fill_amounts, *_ = decoded
 
-        orders.append(self._parse_order(taker_order))
-        for order in maker_orders:
-            orders.append(self._parse_order(order))
+        orders.append(
+            self._parse_order(
+                taker_order,
+                fill_maker_amount=int(taker_fill_amount),
+                fill_taker_amount=int(taker_receive_amount),
+            )
+        )
+        for idx, order in enumerate(maker_orders):
+            maker_fill_amount = int(maker_fill_amounts[idx]) if idx < len(maker_fill_amounts) else 0
+            orders.append(
+                self._parse_order(
+                    order,
+                    fill_maker_amount=maker_fill_amount,
+                    fill_taker_amount=self._derive_taker_fill(order, maker_fill_amount),
+                )
+            )
 
         return orders
 
-    def _parse_order(self, order_tuple: tuple) -> DecodedOrder:
+    def _parse_order(
+        self,
+        order_tuple: tuple,
+        fill_maker_amount: int = 0,
+        fill_taker_amount: int = 0,
+    ) -> DecodedOrder:
         """Parse order tuple into DecodedOrder dataclass."""
         return DecodedOrder(
             salt=order_tuple[0],
@@ -73,4 +90,14 @@ class TransactionDecoder:
             side=order_tuple[10],
             signature_type=order_tuple[11],
             signature=order_tuple[12],
+            fill_maker_amount=fill_maker_amount,
+            fill_taker_amount=fill_taker_amount,
         )
+
+    def _derive_taker_fill(self, order_tuple: tuple, maker_fill_amount: int) -> int:
+        """Convert a maker-leg fill amount into the corresponding taker-leg fill amount."""
+        order_maker_amount = int(order_tuple[5])
+        order_taker_amount = int(order_tuple[6])
+        if maker_fill_amount <= 0 or order_maker_amount <= 0 or order_taker_amount <= 0:
+            return 0
+        return (maker_fill_amount * order_taker_amount) // order_maker_amount

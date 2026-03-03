@@ -4,11 +4,79 @@ import unittest
 
 from live_paper_trade import normalize_target_trade
 from src import db
+from src.core.decoder import TransactionDecoder
 from src.core.models import TradeData
 from src.resolution_worker import ResolutionWorker
 
 
 class TestCopyTradingLogic(unittest.TestCase):
+    def test_decoder_uses_match_fill_amounts_for_maker_order(self):
+        taker_order = (
+            0,
+            "0x2e1825d6da4e47517150edc860bde48faa8ddd00",
+            "0x47fbff095ce9c48b90562126e3b08f7dc03507ad",
+            "0x0000000000000000000000000000000000000000",
+            39934716434456484670487618776751900589684777209250208763867390773708433290124,
+            10_000_000,
+            12_345_600,
+            0,
+            0,
+            1000,
+            0,
+            2,
+            b"",
+        )
+        decoder = TransactionDecoder()
+        orders = decoder._extract_orders(
+            (
+                taker_order,
+                [
+                    (
+                        0,
+                        "0xd0d6053c3c37e727402d84c14069780d360993aa",
+                        "0x9698804c25949d7347fc1ad4228d1d6f0f2dad0e",
+                        "0x0000000000000000000000000000000000000000",
+                        63506669687327781521484104900765731386276593151365975157276165770920431842102,
+                        9_840_000,
+                        41_000_000,
+                        0,
+                        0,
+                        1000,
+                        0,
+                        2,
+                        b"",
+                    )
+                ],
+                9_999_997,
+                13_157_891,
+                [3_157_894],
+                0,
+                [0],
+            )
+        )
+
+        maker_order = next(order for order in orders if order.maker.lower() == "0xd0d6053c3c37e727402d84c14069780d360993aa")
+        self.assertEqual(maker_order.maker_amount, 9_840_000)
+        self.assertEqual(maker_order.taker_amount, 41_000_000)
+        self.assertEqual(maker_order.fill_maker_amount, 3_157_894)
+        self.assertEqual(maker_order.fill_taker_amount, 13_157_891)
+
+        trade = TradeData(
+            block_number=1,
+            timestamp="2026-01-01T00:00:00+00:00",
+            transaction_hash="0xfill",
+            wallet=maker_order.maker,
+            token_id=maker_order.token_id,
+            side=maker_order.side,
+            maker_amount=maker_order.fill_maker_amount,
+            taker_amount=maker_order.fill_taker_amount,
+        )
+        side, size, price, cost = normalize_target_trade(trade)
+        self.assertEqual(side, "BUY")
+        self.assertAlmostEqual(size, 13.157891)
+        self.assertAlmostEqual(cost, 3.157894)
+        self.assertAlmostEqual(price, 0.24, places=6)
+
     def test_normalize_target_trade_buy(self):
         trade = TradeData(
             block_number=1,

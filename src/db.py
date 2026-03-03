@@ -2,6 +2,7 @@
 import sqlite3
 import json
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -23,18 +24,46 @@ INDEX_STATEMENTS = (
 )
 
 
-def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
+class ManagedConnection:
+    """Thin wrapper that can suppress intermediate commits inside a transaction."""
+
+    def __init__(self, inner: sqlite3.Connection) -> None:
+        self._inner = inner
+        self._suppress_commit_depth = 0
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def commit(self) -> None:
+        if self._suppress_commit_depth > 0:
+            return
+        self._inner.commit()
+
+    def rollback(self) -> None:
+        self._inner.rollback()
+
+    def close(self) -> None:
+        self._inner.close()
+
+    @contextmanager
+    def suppress_commits(self):
+        self._suppress_commit_depth += 1
+        try:
+            yield self
+        finally:
+            self._suppress_commit_depth -= 1
+
+
+def get_connection(db_path: Optional[str] = None) -> ManagedConnection:
     """Return a configured connection for regular reads and writes."""
     conn = sqlite3.connect(db_path or str(DB_PATH), timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+    return ManagedConnection(conn)
 
-
-from contextlib import contextmanager
 
 @contextmanager
-def transaction(conn: Optional[sqlite3.Connection] = None, db_path: Optional[str] = None):
+def transaction(conn: Optional[ManagedConnection] = None, db_path: Optional[str] = None):
     """Context manager for a database transaction. 
     If a connection is provided, it uses it and DOES NOT close it (for nested use).
     If no connection is provided, it opens one, manages it, and closes it.
@@ -45,7 +74,8 @@ def transaction(conn: Optional[sqlite3.Connection] = None, db_path: Optional[str
         should_close = True
     
     try:
-        yield conn
+        with conn.suppress_commits():
+            yield conn
         conn.commit()
     except Exception:
         conn.rollback()

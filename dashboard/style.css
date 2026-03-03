@@ -554,6 +554,11 @@ body {
     margin-bottom: 1rem;
 }
 
+.chart-card canvas {
+    width: 100%;
+    min-height: 260px;
+}
+
 .wallet-summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -567,6 +572,10 @@ body {
 
 .wallet-stat-card .stat-value {
     font-size: 1.2rem;
+}
+
+.wallet-chart-card {
+    padding: 1rem 1.25rem 0.75rem;
 }
 
 .wallet-section {

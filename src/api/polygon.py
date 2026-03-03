@@ -6,6 +6,7 @@ from typing import Any, Awaitable, Callable, Optional
 
 import aiohttp
 import websockets
+from websockets.exceptions import ConnectionClosed
 
 from src.constants import POLYGON_WSS_URL
 from src.utils.logging import get_logger
@@ -18,13 +19,23 @@ class PolygonClient:
 
     RECONNECT_DELAY_SECONDS = 5
     RPC_RETRY_DELAY_SECONDS = 1
+    WS_OPEN_TIMEOUT_SECONDS = 20
 
     def __init__(self, wss_url: str = POLYGON_WSS_URL) -> None:
         self.wss_url = wss_url
-        self.http_url = wss_url.replace("wss://", "https://").rstrip("/")
+        self.http_url = self._derive_http_url(wss_url)
         self._ws: Optional[websockets.WebSocketClientProtocol] = None
         self._http_session: Optional[aiohttp.ClientSession] = None
         self._request_id = 0
+
+    @staticmethod
+    def _derive_http_url(rpc_url: str) -> str:
+        """Derive an HTTPS JSON-RPC URL from a configured endpoint."""
+        if rpc_url.startswith("wss://"):
+            return rpc_url.replace("wss://", "https://", 1).rstrip("/")
+        if rpc_url.startswith("ws://"):
+            return rpc_url.replace("ws://", "http://", 1).rstrip("/")
+        return rpc_url.rstrip("/")
 
     def _next_id(self) -> int:
         """Generate next JSON-RPC request ID."""
@@ -33,21 +44,23 @@ class PolygonClient:
 
     async def connect(self) -> None:
         """Establish WebSocket connection."""
-        log.info("Connecting to WebSocket", url=self.wss_url[:50] + "...")
-        try:
-            # Create SSL context for compatibility
-            ssl_context = ssl.create_default_context()
-
-            self._ws = await websockets.connect(
-                self.wss_url,
-                ping_interval=30,
-                ping_timeout=10,
-                ssl=ssl_context,
+        if not self.wss_url.startswith(("ws://", "wss://")):
+            raise ValueError(
+                "POLYGON_WSS_URL must be a websocket URL",
             )
-            log.info("WebSocket connected")
-        except Exception as e:
-            log.error("WebSocket connection failed", error=str(e))
-            raise
+
+        log.info("Connecting to WebSocket", url=self.wss_url[:50] + "...")
+        # Create SSL context for compatibility
+        ssl_context = ssl.create_default_context()
+
+        self._ws = await websockets.connect(
+            self.wss_url,
+            ping_interval=30,
+            ping_timeout=10,
+            open_timeout=self.WS_OPEN_TIMEOUT_SECONDS,
+            ssl=ssl_context,
+        )
+        log.info("WebSocket connected")
 
     async def disconnect(self) -> None:
         """Close WebSocket and HTTP connections."""
@@ -61,7 +74,8 @@ class PolygonClient:
     async def _get_http_session(self) -> aiohttp.ClientSession:
         """Get or create reusable HTTP session."""
         if self._http_session is None or self._http_session.closed:
-            self._http_session = aiohttp.ClientSession()
+            timeout = aiohttp.ClientTimeout(total=30)
+            self._http_session = aiohttp.ClientSession(timeout=timeout)
         return self._http_session
 
     async def _rpc_call(self, method: str, params: list | None = None) -> Any:
@@ -107,26 +121,53 @@ class PolygonClient:
     async def subscribe_blocks(
         self, callback: Callable[[int], Awaitable[None]]
     ) -> None:
-        """Subscribe to new block headers via WebSocket."""
-        if not self._ws:
-            await self.connect()
+        """Subscribe to new block headers via WebSocket and reconnect on disconnect."""
+        while True:
+            try:
+                if not self._ws:
+                    await self.connect()
 
-        # Subscribe to newHeads
-        subscribe_msg = {
-            "jsonrpc": "2.0",
-            "id": self._next_id(),
-            "method": "eth_subscribe",
-            "params": ["newHeads"],
-        }
-        await self._ws.send(json.dumps(subscribe_msg))
-        await self._ws.recv()  # subscription confirmation
+                subscribe_msg = {
+                    "jsonrpc": "2.0",
+                    "id": self._next_id(),
+                    "method": "eth_subscribe",
+                    "params": ["newHeads"],
+                }
+                await self._ws.send(json.dumps(subscribe_msg))
+                await self._ws.recv()  # subscription confirmation
 
-        # Listen for new blocks
-        async for message in self._ws:
-            data = json.loads(message)
-            if "params" in data:
-                block_number = int(data["params"]["result"]["number"], 16)
-                await callback(block_number)
+                async for message in self._ws:
+                    data = json.loads(message)
+                    if "params" in data:
+                        block_number = int(data["params"]["result"]["number"], 16)
+                        await callback(block_number)
+
+                raise RuntimeError("WebSocket stream ended")
+            except asyncio.CancelledError:
+                raise
+            except ConnectionClosed as e:
+                log.warning(
+                    "WebSocket disconnected; reconnecting",
+                    error=str(e),
+                    delay_seconds=self.RECONNECT_DELAY_SECONDS,
+                )
+            except Exception as e:
+                log.warning(
+                    "WebSocket subscription failed; reconnecting",
+                    error=str(e),
+                    delay_seconds=self.RECONNECT_DELAY_SECONDS,
+                )
+            finally:
+                if self._ws:
+                    await self._ws.close()
+                    self._ws = None
+
+            await asyncio.sleep(self.RECONNECT_DELAY_SECONDS)
+
+    async def get_latest_block_number(self) -> int:
+        """Fetch the latest block number via HTTP RPC."""
+        result = await self._rpc_call("eth_blockNumber")
+        return int(result, 16)
 
     async def get_block_with_transactions(self, block_number: int) -> dict:
         """Fetch full block with all transactions."""

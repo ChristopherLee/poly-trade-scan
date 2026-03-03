@@ -142,8 +142,8 @@ class TradeDownloader:
                 wallet=order.maker,
                 token_id=order.token_id,
                 side=order.side,
-                maker_amount=order.maker_amount,
-                taker_amount=order.taker_amount,
+                maker_amount=order.fill_maker_amount,
+                taker_amount=order.fill_taker_amount,
             ))
         return trades, len(transactions)
 

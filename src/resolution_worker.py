@@ -106,6 +106,18 @@ class ResolutionWorker:
 
         return winner_indices[0]
 
+    def get_ws_asset_ids(self) -> list[str]:
+        """Load token ids for unresolved markets that still have open positions."""
+        with db.transaction(db_path=self.db_path) as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT p.token_id "
+                "FROM positions p "
+                "JOIN markets m ON p.token_id = m.token_id "
+                "WHERE p.size > 0.0001 "
+                "AND m.resolved = 0"
+            ).fetchall()
+        return [row["token_id"] for row in rows if row["token_id"]]
+
     def process_resolution(self, conn: db.sqlite3.Connection, market_meta: dict) -> None:
         """Processes resolution for a market given its metadata."""
         cid = market_meta.get("condition_id")
@@ -405,7 +417,11 @@ class ResolutionWorker:
         if clob_ids is None:
             clob_ids = self._parse_maybe_json_list(data.get("clobTokenIds"))
 
-        log.info("WS market_resolved event received", condition_id=condition_id, raw_keys=sorted(list(data.keys())))
+        log.debug(
+            "WS market_resolved event received",
+            condition_id=condition_id,
+            raw_keys=sorted(list(data.keys())),
+        )
 
         if not condition_id or not clob_ids:
             log.warning(
@@ -454,7 +470,7 @@ class ResolutionWorker:
 
         from src.api.polymarket import PolymarketWSClient
 
-        pm_client = PolymarketWSClient()
+        pm_client = PolymarketWSClient(asset_ids_provider=self.get_ws_asset_ids)
         pm_client.on("market_resolved", self.on_market_resolved)
         asyncio.create_task(pm_client.start())
 
