@@ -6,11 +6,19 @@ let pnlChart = null;
 let latencyChart = null;
 let categoryPnlChart = null;
 let walletPnlChart = null;
+let walletRealizedChart = null;
+let walletTradesGrid = null;
+let walletTradesGridWallet = null;
+let walletRealizedMode = '15m';
+let activeWalletRealizedPoints = [];
+let walletTradesRangeStart = '';
+let walletTradesRangeEnd = '';
 let autoRefreshTimer = null;
 let leaderboardWalletCache = [];
 let activeWalletDetail = null;
 const tableSortState = {};
 let dashboardInitialized = false;
+const WALLET_TRADES_PAGE_SIZE = 50;
 const TRADES_COLUMN_WIDTH_STORAGE_KEY = 'trades_column_widths_v1';
 const TRADES_COLUMN_WIDTH_VARS = {
     time: '--trades-col-time',
@@ -28,6 +36,26 @@ const TRADES_COLUMN_WIDTH_VARS = {
     position: '--trades-col-position',
     book: '--trades-col-book',
 };
+const WALLET_TRADE_GRID_COLUMNS = [
+    { id: 'entry_ts', name: 'Entry Time', sortField: 'entry_ts' },
+    { id: 'question', name: 'Market', sortField: 'question' },
+    { id: 'outcome', name: 'Outcome', sortField: 'outcome' },
+    { id: 'category', name: 'Category', sortField: 'category' },
+    { id: 'entry_size', name: 'Entry Size', sortField: 'entry_size' },
+    { id: 'entry_price', name: 'Entry Price', sortField: 'entry_price' },
+    { id: 'entry_cost', name: 'Entry Cost', sortField: 'entry_cost' },
+    { id: 'closed_size', name: 'Closed Size', sortField: 'closed_size' },
+    { id: 'remaining_size', name: 'Open Size', sortField: 'remaining_size' },
+    { id: 'avg_exit_value', name: 'Exit / Payout', sortField: 'avg_exit_value' },
+    { id: 'realized_pnl', name: 'Realized PnL', sortField: 'realized_pnl' },
+    { id: 'unrealized_pnl', name: 'Unrealized PnL', sortField: 'unrealized_pnl' },
+    { id: 'total_pnl', name: 'Total PnL', sortField: 'total_pnl' },
+    { id: 'status', name: 'Status', sortField: 'status' },
+    { id: 'closed_ts', name: 'Closed Time', sortField: 'closed_ts' },
+    { id: 'hold_seconds', name: 'Hold', sortField: 'hold_seconds' },
+    { id: 'latency_seconds', name: 'Entry Latency', sortField: 'latency_seconds' },
+    { id: 'notes', name: 'Notes', sortField: null },
+];
 
 // â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function initializeDashboard() {
@@ -557,7 +585,14 @@ function formatShareValue(value, decimals = 2) {
 
 function formatPriceValue(value) {
     if (value == null || value === '' || Number.isNaN(Number(value))) return '-';
-    return `$${Number(value).toFixed(4)}`;
+    return `$${Number(value).toFixed(2)}`;
+}
+
+function formatPercentValue(value, decimals = 2) {
+    if (value == null || Number.isNaN(Number(value))) return '-';
+    const numeric = Number(value);
+    const sign = numeric >= 0 ? '+' : '';
+    return `${sign}${numeric.toFixed(decimals)}%`;
 }
 
 function renderWalletTradeStatus(trade) {
@@ -568,6 +603,208 @@ function renderWalletTradeStatus(trade) {
         parts.push(`<div class="wallet-trade-note">${escapeHtml(trade.no_fill_reason)}</div>`);
     }
     return parts.join('');
+}
+
+function walletLotStatusBadge(status) {
+    const tone = {
+        Open: 'badge-open',
+        'Partially Closed': 'badge-resolved',
+        Closed: 'badge-buy',
+        Resolved: 'badge-buy',
+        'No Fill': 'badge-sell',
+    }[status] || 'badge-open';
+    return `<span class="badge ${tone}">${escapeHtml(status || '-')}</span>`;
+}
+
+function formatSecondsValue(value) {
+    if (value == null || Number.isNaN(Number(value))) return '-';
+    return `${Number(value).toFixed(2)}s`;
+}
+
+function walletTradeGridUrl(wallet, params = {}) {
+    const url = new URL('/api/wallet_detail_trades', window.location.origin);
+    url.searchParams.set('wallet', wallet);
+    url.searchParams.set('limit', params.limit ?? WALLET_TRADES_PAGE_SIZE);
+    url.searchParams.set('offset', params.offset ?? 0);
+    url.searchParams.set('sort_by', params.sortBy || 'entry_ts');
+    url.searchParams.set('sort_dir', params.sortDir || 'desc');
+    const startDate = params.startDate ?? walletTradesRangeStart;
+    const endDate = params.endDate ?? walletTradesRangeEnd;
+    if (startDate) {
+        url.searchParams.set('start_date', startDate);
+    }
+    if (endDate) {
+        url.searchParams.set('end_date', endDate);
+    }
+    if (params.search) {
+        url.searchParams.set('search', params.search);
+    }
+    return `${url.pathname}${url.search}`;
+}
+
+function walletTradeSortDirection(direction) {
+    if (direction === 'asc' || direction === 1) return 'asc';
+    return 'desc';
+}
+
+function walletTradeGridCell(id, trade) {
+    const question = trade.question || '-';
+    const marketLink = trade.slug
+        ? `<a href="https://polymarket.com/event/${trade.slug}" target="_blank" rel="noopener noreferrer" class="market-link">${escapeHtml(question)}</a>`
+        : escapeHtml(question);
+    const realizedPnl = trade.realized_pnl == null ? '-' : fmt$(Number(trade.realized_pnl || 0));
+    const realizedPnlClass = trade.realized_pnl == null ? '' : pnlClass(Number(trade.realized_pnl || 0));
+    const unrealizedPnl = trade.unrealized_pnl == null ? '-' : fmt$(Number(trade.unrealized_pnl || 0));
+    const unrealizedPnlClass = trade.unrealized_pnl == null ? '' : pnlClass(Number(trade.unrealized_pnl || 0));
+    const totalPnl = trade.total_pnl == null ? '-' : fmt$(Number(trade.total_pnl || 0));
+    const totalPnlClass = trade.total_pnl == null ? '' : pnlClass(Number(trade.total_pnl || 0));
+
+    if (id === 'entry_ts') {
+        return gridjs.html(`<a href="https://polygonscan.com/tx/${trade.tx_hash}" target="_blank" rel="noopener noreferrer" class="tx-link">${fmtTime(trade.entry_ts)}</a>`);
+    }
+    if (id === 'question') {
+        return gridjs.html(`<div class="wallet-grid-market" title="${escapeHtml(question)}">${marketLink}</div>`);
+    }
+    if (id === 'outcome') return trade.outcome || '?';
+    if (id === 'category') return trade.category || 'Other';
+    if (id === 'entry_size') return gridjs.html(`<span class="mono">${formatShareValue(trade.entry_size, 2)}</span>`);
+    if (id === 'entry_price') return gridjs.html(`<span class="mono">${formatPriceValue(trade.entry_price)}</span>`);
+    if (id === 'entry_cost') return gridjs.html(`<span class="mono">${fmt$(Number(trade.entry_cost || 0))}</span>`);
+    if (id === 'closed_size') return gridjs.html(`<span class="mono">${formatShareValue(trade.closed_size, 2)}</span>`);
+    if (id === 'remaining_size') return gridjs.html(`<span class="mono">${formatShareValue(trade.remaining_size, 2)}</span>`);
+    if (id === 'avg_exit_value') return gridjs.html(`<span class="mono">${trade.avg_exit_value != null ? formatPriceValue(trade.avg_exit_value) : '-'}</span>`);
+    if (id === 'realized_pnl') return gridjs.html(`<span class="mono ${realizedPnlClass}">${realizedPnl}</span>`);
+    if (id === 'unrealized_pnl') return gridjs.html(`<span class="mono ${unrealizedPnlClass}">${unrealizedPnl}</span>`);
+    if (id === 'total_pnl') return gridjs.html(`<span class="mono ${totalPnlClass}">${totalPnl}</span>`);
+    if (id === 'status') return gridjs.html(walletLotStatusBadge(trade.status));
+    if (id === 'closed_ts') return trade.closed_ts ? fmtTime(trade.closed_ts) : '-';
+    if (id === 'hold_seconds') return formatSecondsValue(trade.hold_seconds);
+    if (id === 'latency_seconds') return formatSecondsValue(trade.latency_seconds);
+    if (id === 'notes') return gridjs.html(`<div class="wallet-trade-note">${escapeHtml(trade.notes || '-')}</div>`);
+    return '-';
+}
+
+function destroyWalletTradesGrid() {
+    if (walletTradesGrid && typeof walletTradesGrid.destroy === 'function') {
+        walletTradesGrid.destroy();
+    }
+    walletTradesGrid = null;
+    walletTradesGridWallet = null;
+    const container = document.getElementById('wallet-trades-grid');
+    if (container) {
+        container.innerHTML = '';
+    }
+}
+
+function syncWalletTradesRangeStateFromInputs() {
+    walletTradesRangeStart = document.getElementById('wallet-trades-start-date')?.value || '';
+    walletTradesRangeEnd = document.getElementById('wallet-trades-end-date')?.value || '';
+}
+
+function renderWalletTradesRangeInputs() {
+    const startInput = document.getElementById('wallet-trades-start-date');
+    const endInput = document.getElementById('wallet-trades-end-date');
+    if (startInput) startInput.value = walletTradesRangeStart;
+    if (endInput) endInput.value = walletTradesRangeEnd;
+}
+
+function applyWalletTradesRange() {
+    syncWalletTradesRangeStateFromInputs();
+    if (!activeWalletDetail) return;
+    destroyWalletTradesGrid();
+    renderWalletTradesGrid(activeWalletDetail);
+}
+
+function clearWalletTradesRange() {
+    walletTradesRangeStart = '';
+    walletTradesRangeEnd = '';
+    renderWalletTradesRangeInputs();
+    if (!activeWalletDetail) return;
+    destroyWalletTradesGrid();
+    renderWalletTradesGrid(activeWalletDetail);
+}
+
+function buildWalletTradesGrid(wallet) {
+    return new gridjs.Grid({
+        columns: WALLET_TRADE_GRID_COLUMNS.map((column) => ({
+            id: column.id,
+            name: column.name,
+            sort: column.sortField !== null,
+            formatter: (cell, row) => walletTradeGridCell(column.id, row?.cells?.[0]?.data || cell),
+        })),
+        server: {
+            url: walletTradeGridUrl(wallet),
+            then: (data) => (Array.isArray(data.rows) ? data.rows : []).map((trade) => WALLET_TRADE_GRID_COLUMNS.map(() => trade)),
+            total: (data) => Number(data.total || 0),
+        },
+        sort: {
+            multiColumn: false,
+            server: {
+                url: (prev, columns) => {
+                    if (!columns.length) return prev;
+                    const sortColumn = WALLET_TRADE_GRID_COLUMNS[columns[0].index];
+                    if (!sortColumn || !sortColumn.sortField) return prev;
+                    const url = new URL(prev, window.location.origin);
+                    url.searchParams.set('sort_by', sortColumn.sortField);
+                    url.searchParams.set('sort_dir', walletTradeSortDirection(columns[0].direction));
+                    return `${url.pathname}${url.search}`;
+                },
+            },
+        },
+        search: {
+            enabled: true,
+            server: {
+                url: (prev, keyword) => {
+                    const url = new URL(prev, window.location.origin);
+                    if (keyword) {
+                        url.searchParams.set('search', keyword);
+                    } else {
+                        url.searchParams.delete('search');
+                    }
+                    url.searchParams.set('offset', '0');
+                    return `${url.pathname}${url.search}`;
+                },
+            },
+        },
+        pagination: {
+            enabled: true,
+            limit: WALLET_TRADES_PAGE_SIZE,
+            summary: true,
+            server: {
+                url: (prev, page, limit) => {
+                    const url = new URL(prev, window.location.origin);
+                    url.searchParams.set('limit', String(limit));
+                    url.searchParams.set('offset', String(page * limit));
+                    return `${url.pathname}${url.search}`;
+                },
+            },
+        },
+        className: {
+            table: 'wallet-grid-table',
+        },
+    });
+}
+
+function renderWalletTradesGrid(wallet, options = {}) {
+    const container = document.getElementById('wallet-trades-grid');
+    if (!container) return;
+
+    if (typeof gridjs === 'undefined' || !gridjs.Grid) {
+        container.innerHTML = '<div class="wallet-grid-empty">Grid.js failed to load.</div>';
+        return;
+    }
+
+    if (!walletTradesGrid || walletTradesGridWallet !== wallet) {
+        destroyWalletTradesGrid();
+        walletTradesGrid = buildWalletTradesGrid(wallet);
+        walletTradesGridWallet = wallet;
+        walletTradesGrid.render(container);
+        return;
+    }
+
+    if (options.reload && typeof walletTradesGrid.forceRender === 'function') {
+        walletTradesGrid.forceRender();
+    }
 }
 
 function walletTradeRowClass(trade) {
@@ -618,7 +855,60 @@ function destroyWalletPnlChart() {
     }
 }
 
-function renderWalletPnlTimeline(timeline) {
+function destroyWalletRealizedChart() {
+    if (walletRealizedChart) {
+        walletRealizedChart.destroy();
+        walletRealizedChart = null;
+    }
+}
+
+function updateWalletRealizedModeButtons() {
+    ['15m', '1h', 'trade'].forEach((mode) => {
+        const button = document.getElementById(`wallet-realized-mode-${mode}`);
+        if (button) {
+            button.classList.toggle('active', walletRealizedMode === mode);
+        }
+    });
+}
+
+function setWalletRealizedMode(mode) {
+    if (!['15m', '1h', 'trade'].includes(mode)) return;
+    walletRealizedMode = mode;
+    updateWalletRealizedModeButtons();
+    renderWalletRealizedChart(activeWalletRealizedPoints);
+}
+
+function aggregateWalletRealizedPoints(points, bucketSeconds) {
+    const buckets = new Map();
+    points.forEach((point) => {
+        const ts = Number(point.ts || 0);
+        const bucketTs = Math.floor(ts / bucketSeconds) * bucketSeconds;
+        const bucket = buckets.get(bucketTs) || {
+            ts: bucketTs,
+            realized_pnl: 0,
+            trade_count: 0,
+            wins: 0,
+            losses: 0,
+            flat: 0,
+        };
+        const realized = Number(point.realized_pnl || 0);
+        bucket.realized_pnl += realized;
+        bucket.trade_count += 1;
+        if (realized > 0.01) bucket.wins += 1;
+        else if (realized < -0.01) bucket.losses += 1;
+        else bucket.flat += 1;
+        buckets.set(bucketTs, bucket);
+    });
+
+    return Array.from(buckets.values())
+        .sort((a, b) => a.ts - b.ts)
+        .map((bucket) => ({
+            ...bucket,
+            realized_pnl: Number(bucket.realized_pnl.toFixed(2)),
+        }));
+}
+
+function renderWalletPnlTimeline(timeline, summary = {}) {
     const chartMeta = document.getElementById('wallet-pnl-meta');
     destroyWalletPnlChart();
 
@@ -627,7 +917,11 @@ function renderWalletPnlTimeline(timeline) {
         return;
     }
 
-    chartMeta.textContent = `${timeline.length} points · ${timeline[timeline.length - 1].open_positions || 0} open positions`;
+    const totalPoints = Number(summary.timeline_total_points || timeline.length);
+    const pointsLabel = totalPoints > timeline.length
+        ? `${timeline.length} shown of ${totalPoints} points`
+        : `${timeline.length} points`;
+    chartMeta.textContent = `${pointsLabel} · ${timeline[timeline.length - 1].open_positions || 0} open positions`;
 
     const labels = timeline.map(point => fmtTime(point.ts));
     const realized = timeline.map(point => Number(point.realized_pnl || 0));
@@ -698,6 +992,195 @@ function renderWalletPnlTimeline(timeline) {
     });
 }
 
+function renderWalletRealizedTradeDots(points, chartMeta) {
+    const positiveCount = points.filter((point) => Number(point.realized_pnl || 0) > 0.01).length;
+    const negativeCount = points.filter((point) => Number(point.realized_pnl || 0) < -0.01).length;
+    const flatCount = points.length - positiveCount - negativeCount;
+    chartMeta.textContent = `${points.length} closed trades · ${positiveCount} wins · ${negativeCount} losses · ${flatCount} flat`;
+
+    const data = points.map((point) => ({
+        x: Number(point.ts || 0) * 1000,
+        y: Number(point.realized_pnl || 0),
+        question: point.question || '-',
+        outcome: point.outcome || '?',
+        status: point.status || '-',
+        category: point.category || 'Other',
+        hold_seconds: point.hold_seconds,
+    }));
+
+    const ctx = document.getElementById('wallet-realized-chart').getContext('2d');
+    walletRealizedChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'Realized PnL ($)',
+                    data,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBorderWidth: 1,
+                    pointBorderColor: 'rgba(15, 23, 42, 0.9)',
+                    pointBackgroundColor: (context) => {
+                        const value = Number(context.raw?.y || 0);
+                        if (value > 0.01) return 'rgba(16, 185, 129, 0.7)';
+                        if (value < -0.01) return 'rgba(239, 68, 68, 0.7)';
+                        return 'rgba(148, 163, 184, 0.7)';
+                    },
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            parsing: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: (items) => fmtTime((Number(items[0]?.raw?.x || 0) / 1000)),
+                        label: (item) => `${item.raw.question} · ${item.raw.outcome}`,
+                        afterLabel: (item) => [
+                            `Realized: ${fmt$(Number(item.raw.y || 0))}`,
+                            `Status: ${item.raw.status}`,
+                            `Category: ${item.raw.category}`,
+                            `Hold: ${formatSecondsValue(item.raw.hold_seconds)}`,
+                        ],
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    ticks: {
+                        color: '#64748b',
+                        maxTicksLimit: 8,
+                        callback: (value) => fmtTime(Number(value) / 1000),
+                    },
+                    grid: { color: '#1e293b' },
+                },
+                y: {
+                    ticks: {
+                        color: '#64748b',
+                        callback: (value) => fmt$(Number(value || 0)),
+                    },
+                    grid: { color: '#1e293b' },
+                },
+            },
+        },
+    });
+}
+
+function renderWalletRealizedBuckets(points, bucketSeconds, chartMeta) {
+    const buckets = aggregateWalletRealizedPoints(points, bucketSeconds);
+    const bucketLabel = bucketSeconds >= 3600 ? '1h' : '15m';
+    chartMeta.textContent = `${buckets.length} ${bucketLabel} buckets · ${points.length} closed trades`;
+
+    const labels = buckets.map((bucket) => fmtTime(bucket.ts));
+    const pnlValues = buckets.map((bucket) => Number(bucket.realized_pnl || 0));
+    const tradeCounts = buckets.map((bucket) => Number(bucket.trade_count || 0));
+
+    const ctx = document.getElementById('wallet-realized-chart').getContext('2d');
+    walletRealizedChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: `Realized PnL (${bucketLabel})`,
+                    data: pnlValues,
+                    yAxisID: 'y',
+                    borderRadius: 4,
+                    backgroundColor: pnlValues.map((value) => (
+                        value > 0.01 ? 'rgba(16, 185, 129, 0.72)'
+                            : value < -0.01 ? 'rgba(239, 68, 68, 0.72)'
+                                : 'rgba(148, 163, 184, 0.6)'
+                    )),
+                    borderColor: pnlValues.map((value) => (
+                        value > 0.01 ? 'rgba(16, 185, 129, 0.98)'
+                            : value < -0.01 ? 'rgba(239, 68, 68, 0.98)'
+                                : 'rgba(148, 163, 184, 0.85)'
+                    )),
+                    borderWidth: 1,
+                },
+                {
+                    type: 'line',
+                    label: 'Closed Trades',
+                    data: tradeCounts,
+                    yAxisID: 'yCount',
+                    borderColor: 'rgba(99, 102, 241, 0.95)',
+                    backgroundColor: 'rgba(99, 102, 241, 0.18)',
+                    tension: 0.25,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 2,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
+            plugins: {
+                legend: { labels: { color: '#94a3b8', font: { family: 'Inter' } } },
+                tooltip: {
+                    callbacks: {
+                        afterBody: (items) => {
+                            const bucket = buckets[items[0]?.dataIndex ?? 0];
+                            if (!bucket) return [];
+                            return [
+                                `Wins: ${bucket.wins}`,
+                                `Losses: ${bucket.losses}`,
+                                `Flat: ${bucket.flat}`,
+                            ];
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#64748b', maxTicksLimit: 10 },
+                    grid: { color: '#1e293b' },
+                },
+                y: {
+                    ticks: {
+                        color: '#64748b',
+                        callback: (value) => fmt$(Number(value || 0)),
+                    },
+                    grid: { color: '#1e293b' },
+                },
+                yCount: {
+                    position: 'right',
+                    ticks: {
+                        color: '#64748b',
+                        precision: 0,
+                    },
+                    grid: { display: false },
+                },
+            },
+        },
+    });
+}
+
+function renderWalletRealizedChart(points) {
+    const chartMeta = document.getElementById('wallet-realized-meta');
+    destroyWalletRealizedChart();
+    updateWalletRealizedModeButtons();
+
+    if (!Array.isArray(points) || !points.length) {
+        chartMeta.textContent = 'No realized trade outcomes yet';
+        return;
+    }
+
+    if (walletRealizedMode === 'trade') {
+        renderWalletRealizedTradeDots(points, chartMeta);
+        return;
+    }
+
+    renderWalletRealizedBuckets(points, walletRealizedMode === '1h' ? 3600 : 900, chartMeta);
+}
+
 async function openWalletDetail(address, options = {}) {
     const wallet = String(address || '').trim().toLowerCase();
     if (!wallet) return;
@@ -709,13 +1192,15 @@ async function openWalletDetail(address, options = {}) {
     }
 
     activeWalletDetail = wallet;
+    renderWalletTradesRangeInputs();
 
     const walletInfo = data.wallet || {};
     const summary = data.summary || {};
     const positions = Array.isArray(data.positions) ? data.positions : [];
     const openPositions = positions.filter(position => String(position.status || '').toLowerCase() === 'open');
-    const trades = Array.isArray(data.trades) ? data.trades : [];
     const timeline = Array.isArray(data.pnl_timeline) ? data.pnl_timeline : [];
+    const realizedTradePoints = Array.isArray(data.realized_trade_points) ? data.realized_trade_points : [];
+    activeWalletRealizedPoints = realizedTradePoints;
     const alias = walletInfo.alias || fmtAddr(walletInfo.address || wallet);
     const profileUrl = `https://polymarket.com/profile/${walletInfo.address || wallet}`;
     const statusLabel = walletInfo.tracking_enabled ? 'Tracking enabled' : 'Tracking disabled';
@@ -731,12 +1216,13 @@ async function openWalletDetail(address, options = {}) {
         <span>${escapeHtml(walletInfo.source || 'manual')}</span>
     `;
     document.getElementById('wallet-modal-summary').innerHTML = renderWalletSummary(summary);
-    renderWalletPnlTimeline(timeline);
+    renderWalletPnlTimeline(timeline, summary);
+    renderWalletRealizedChart(realizedTradePoints);
 
     document.getElementById('wallet-positions-meta').textContent =
         `${openPositions.length} open markets · ${positions.length} total derived positions`;
     document.getElementById('wallet-trades-meta').textContent =
-        `${summary.total_target_trades || 0} tracked trades · ${summary.filled_trades || 0} filled · ${summary.no_fill_trades || 0} no fill`;
+        `${summary.buy_entry_count || 0} buy entries · ${summary.no_fill_buy_entry_count || 0} no fill · ${summary.active_positions || 0} still open`;
 
     const positionsTbody = document.getElementById('wallet-positions-tbody');
     if (!openPositions.length) {
@@ -775,53 +1261,7 @@ async function openWalletDetail(address, options = {}) {
         }).join('');
     }
     reapplyActiveTableSort('wallet-positions-table');
-
-    const tradesTbody = document.getElementById('wallet-trades-tbody');
-    if (!trades.length) {
-        tradesTbody.innerHTML = '<tr><td colspan="19" style="text-align:center;">No tracked trades for this wallet yet.</td></tr>';
-    } else {
-        tradesTbody.innerHTML = trades.map(trade => {
-            const outcomes = Array.isArray(trade.outcomes) ? trade.outcomes : [];
-            const outcomeLabel = outcomes[trade.outcome_idx] || '?';
-            const question = trade.question || '-';
-            const marketLink = trade.slug
-                ? `<a href="https://polymarket.com/event/${trade.slug}" target="_blank" class="market-link">${escapeHtml(question)}</a>`
-                : escapeHtml(question);
-            const sideBadge = trade.target_side === 'BUY'
-                ? '<span class="badge badge-buy">BUY</span>'
-                : '<span class="badge badge-sell">SELL</span>';
-            const tradePnl = trade.trade_pnl == null ? '-' : fmt$(Number(trade.trade_pnl || 0));
-            const tradePnlClass = trade.trade_pnl == null ? '' : pnlClass(Number(trade.trade_pnl || 0));
-            const realizedPnl = trade.realized_pnl == null ? '-' : fmt$(Number(trade.realized_pnl || 0));
-            const realizedPnlClass = trade.realized_pnl == null ? '' : pnlClass(Number(trade.realized_pnl || 0));
-            const exitPercent = trade.source_position_fraction == null ? '-' : fmtPercent(Number(trade.source_position_fraction || 0) * 100);
-
-            return `
-                <tr class="${walletTradeRowClass(trade)}">
-                    <td><a href="https://polygonscan.com/tx/${trade.tx_hash}" target="_blank" class="tx-link">${fmtTime(trade.onchain_ts)}</a></td>
-                    <td class="truncate" title="${escapeHtml(question)}">${marketLink}</td>
-                    <td>${escapeHtml(outcomeLabel)}</td>
-                    <td>${sideBadge}</td>
-                    <td>${walletEffectBadge(trade.position_effect)}</td>
-                    <td class="mono">${formatShareValue(trade.target_size, 2)}</td>
-                    <td class="mono">${formatPriceValue(trade.target_price)}</td>
-                    <td class="mono">${fmt$(Number(trade.target_cost || 0))}</td>
-                    <td class="mono">${formatShareValue(trade.requested_size, 2)}</td>
-                    <td class="mono">${trade.paper_id ? formatShareValue(trade.paper_size, 2) : '-'}</td>
-                    <td class="mono">${trade.paper_id ? formatPriceValue(trade.paper_price) : '-'}</td>
-                    <td class="mono">${formatShareValue(trade.source_wallet_position_before, 2)}</td>
-                    <td class="mono">${exitPercent}</td>
-                    <td class="mono ${pnlClass(-(trade.slippage || 0))}">${trade.paper_id ? Number(trade.slippage || 0).toFixed(4) : '-'}</td>
-                    <td class="mono ${tradePnlClass}">${tradePnl}</td>
-                    <td class="mono ${realizedPnlClass}">${realizedPnl}</td>
-                    <td class="mono">${trade.total_delay_ms != null ? `${Number(trade.total_delay_ms).toFixed(0)}ms` : '-'}</td>
-                    <td>${renderWalletTradeStatus(trade)}</td>
-                    <td>${trade.paper_id ? `<button class="btn btn-sm btn-ghost" onclick="openOrderBook(${trade.target_id})">Book</button>` : '-'}</td>
-                </tr>
-            `;
-        }).join('');
-    }
-    reapplyActiveTableSort('wallet-trades-table');
+    renderWalletTradesGrid(wallet, { reload: !options.preserveOpen });
 
     if (!options.preserveOpen) {
         document.getElementById('wallet-modal').style.display = 'block';
@@ -1233,7 +1673,10 @@ function closeModal(id) {
     document.getElementById(id).style.display = 'none';
     if (id === 'wallet-modal') {
         activeWalletDetail = null;
+        activeWalletRealizedPoints = [];
         destroyWalletPnlChart();
+        destroyWalletRealizedChart();
+        destroyWalletTradesGrid();
     }
 }
 
@@ -1243,7 +1686,10 @@ window.onclick = function (event) {
         event.target.style.display = 'none';
         if (event.target.id === 'wallet-modal') {
             activeWalletDetail = null;
+            activeWalletRealizedPoints = [];
             destroyWalletPnlChart();
+            destroyWalletRealizedChart();
+            destroyWalletTradesGrid();
         }
     }
 }
@@ -1252,6 +1698,8 @@ window.onclick = function (event) {
 Object.assign(window, {
     addOrEnableWallet,
     addWallet,
+    applyWalletTradesRange,
+    clearWalletTradesRange,
     closeModal,
     filterByWallet,
     goToPosition,
@@ -1260,6 +1708,7 @@ Object.assign(window, {
     openWalletDetail,
     openOrderBook,
     refreshAll,
+    setWalletRealizedMode,
     setLeaderboardTracking,
     setupSortableTables,
     setTradesColumnWidths,

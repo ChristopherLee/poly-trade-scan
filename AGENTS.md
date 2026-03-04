@@ -72,6 +72,8 @@ Dashboard verification tips:
 - After backend changes, verify the live server, not just the source tree. A direct check like `curl http://localhost:8050/api/summary` or `curl "http://localhost:8050/api/wallet_detail?wallet=0x..."` is the fastest sanity test.
 - If the browser still shows old behavior after code changes, assume the dashboard process is stale before assuming the patch failed.
 - For UI regressions, use Playwright against `http://localhost:8050/` so you are testing the running dashboard, including API wiring.
+- For any dashboard code change, perform the live verification flow automatically before replying. Do not wait for the user to ask.
+- If the live server is stale, stop the stale `dashboard.py` process, restart it, then repeat API and UI verification before replying.
 
 
 ### Dashboard Test Data (Recommended)

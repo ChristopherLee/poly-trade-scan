@@ -1,7 +1,9 @@
 """Dashboard web server — serves API + static HTML for paper trade visualization."""
 import json
+import sqlite3
 import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 import urllib.request
@@ -12,6 +14,9 @@ from src.utils.logging import get_logger
 STATIC_DIR = Path(__file__).parent / "dashboard"
 PORT = 8050
 log = get_logger(__name__)
+WALLET_TIMELINE_MAX_POINTS = 750
+WALLET_TRADE_PAGE_SIZE_DEFAULT = 50
+WALLET_TRADE_PAGE_SIZE_MAX = 100
 
 
 def fetch_json(url: str):
@@ -72,67 +77,10 @@ def _build_wallet_pnl_timeline(trade_rows, position_state):
     if not trade_rows:
         trade_rows = []
 
-    timeline_state = {}
-    cumulative_realized = 0.0
-    open_positions = 0
-
-    for trade in trade_rows:
-        token_id = trade["token_id"]
-        state = timeline_state.setdefault(
-            token_id,
-            {
-                "size": 0.0,
-                "cost_basis": 0.0,
-                "realized_pnl": 0.0,
-                "last_price": position_state.get(token_id, {}).get("last_price"),
-                "resolved": position_state.get(token_id, {}).get("resolved"),
-                "payout_value": position_state.get(token_id, {}).get("payout_value"),
-            },
-        )
-        final_state = position_state.get(token_id, {})
-        if final_state:
-            state["last_price"] = final_state.get("last_price")
-            state["resolved"] = final_state.get("resolved")
-            state["payout_value"] = final_state.get("payout_value")
-
-        filled = trade.get("paper_id") is not None and not trade.get("no_fill_reason") and (trade.get("paper_size") or 0) > 0
-        if filled:
-            side = (trade.get("paper_side") or trade.get("target_side") or "").upper()
-            paper_size = float(trade.get("paper_size") or 0.0)
-            paper_price = float(trade.get("paper_price") or 0.0)
-            paper_cost = float(trade.get("paper_cost") or 0.0)
-            was_open = state["size"] > 0.0001
-
-            if side == "BUY":
-                state["cost_basis"] += paper_cost
-                state["size"] += paper_size
-            elif side == "SELL" and state["size"] > 0.0001:
-                avg_entry = state["cost_basis"] / state["size"]
-                shares_to_close = min(paper_size, state["size"])
-                realized_delta = shares_to_close * (paper_price - avg_entry)
-                state["realized_pnl"] += realized_delta
-                cumulative_realized += realized_delta
-                state["size"] -= shares_to_close
-                state["cost_basis"] -= shares_to_close * avg_entry
-                if state["size"] <= 0.0001:
-                    state["size"] = 0.0
-                    state["cost_basis"] = 0.0
-
-            is_open = state["size"] > 0.0001
-            if not was_open and is_open:
-                open_positions += 1
-            elif was_open and not is_open:
-                open_positions = max(open_positions - 1, 0)
-
-        cumulative_unrealized = sum(_mark_position_unrealized(state) for state in timeline_state.values())
+    events = []
+    for index, trade in enumerate(trade_rows):
         point_ts = trade.get("paper_created_at") or trade.get("target_created_at") or trade.get("onchain_ts")
-        timeline.append({
-            "ts": point_ts,
-            "realized_pnl": round(cumulative_realized, 2),
-            "unrealized_pnl": round(cumulative_unrealized, 2),
-            "total_pnl": round(cumulative_realized + cumulative_unrealized, 2),
-            "open_positions": open_positions,
-        })
+        events.append((float(point_ts or 0.0), 0, index, ("trade", trade)))
 
     settlement_events = []
     for token_id, final_state in position_state.items():
@@ -141,39 +89,96 @@ def _build_wallet_pnl_timeline(trade_rows, position_state):
         settlement_ts = final_state.get("wallet_position_updated_at")
         payout_value = final_state.get("payout_value")
         size = float(final_state.get("size") or 0.0)
-        cost_basis = float(final_state.get("cost_basis") or 0.0)
         last_trade_ts = final_state.get("last_trade_ts") or 0
         if settlement_ts is None or settlement_ts <= last_trade_ts or size <= 0.0001:
             continue
         settlement_events.append((float(settlement_ts), token_id, float(payout_value or 0.0)))
 
-    settlement_events.sort(key=lambda item: (item[0], item[1]))
-    for settlement_ts, token_id, payout_value in settlement_events:
-        state = timeline_state.setdefault(
-            token_id,
-            {
-                "size": 0.0,
-                "cost_basis": 0.0,
-                "realized_pnl": 0.0,
-                "last_price": None,
-                "resolved": True,
-                "payout_value": payout_value,
-            },
-        )
-        if state["size"] <= 0.0001:
-            continue
-        realized_delta = (payout_value * state["size"]) - state["cost_basis"]
-        state["resolved"] = True
-        state["payout_value"] = payout_value
-        state["realized_pnl"] += realized_delta
-        cumulative_realized += realized_delta
-        state["size"] = 0.0
-        state["cost_basis"] = 0.0
-        open_positions = max(open_positions - 1, 0)
+    for index, settlement in enumerate(sorted(settlement_events, key=lambda item: (item[0], item[1]))):
+        settlement_ts, token_id, payout_value = settlement
+        events.append((settlement_ts, 1, index, ("settlement", settlement)))
+
+    events.sort(key=lambda item: (item[0], item[1], item[2]))
+
+    timeline_state = {}
+    cumulative_realized = 0.0
+    open_positions = 0
+
+    for point_ts, _, _, payload in events:
+        event_type = payload[0]
+        if event_type == "trade":
+            trade = payload[1]
+            token_id = trade["token_id"]
+            state = timeline_state.setdefault(
+                token_id,
+                {
+                    "size": 0.0,
+                    "cost_basis": 0.0,
+                    "realized_pnl": 0.0,
+                    "last_price": position_state.get(token_id, {}).get("last_price"),
+                    "resolved": False,
+                    "payout_value": None,
+                },
+            )
+            final_state = position_state.get(token_id, {})
+            if final_state:
+                state["last_price"] = final_state.get("last_price")
+
+            filled = trade.get("paper_id") is not None and not trade.get("no_fill_reason") and (trade.get("paper_size") or 0) > 0
+            if filled:
+                side = (trade.get("paper_side") or trade.get("target_side") or "").upper()
+                paper_size = float(trade.get("paper_size") or 0.0)
+                paper_price = float(trade.get("paper_price") or 0.0)
+                paper_cost = float(trade.get("paper_cost") or 0.0)
+                was_open = state["size"] > 0.0001
+
+                if side == "BUY":
+                    state["cost_basis"] += paper_cost
+                    state["size"] += paper_size
+                elif side == "SELL" and state["size"] > 0.0001:
+                    avg_entry = state["cost_basis"] / state["size"]
+                    shares_to_close = min(paper_size, state["size"])
+                    realized_delta = shares_to_close * (paper_price - avg_entry)
+                    state["realized_pnl"] += realized_delta
+                    cumulative_realized += realized_delta
+                    state["size"] -= shares_to_close
+                    state["cost_basis"] -= shares_to_close * avg_entry
+                    if state["size"] <= 0.0001:
+                        state["size"] = 0.0
+                        state["cost_basis"] = 0.0
+
+                is_open = state["size"] > 0.0001
+                if not was_open and is_open:
+                    open_positions += 1
+                elif was_open and not is_open:
+                    open_positions = max(open_positions - 1, 0)
+        else:
+            settlement_ts, token_id, payout_value = payload[1]
+            state = timeline_state.setdefault(
+                token_id,
+                {
+                    "size": 0.0,
+                    "cost_basis": 0.0,
+                    "realized_pnl": 0.0,
+                    "last_price": None,
+                    "resolved": True,
+                    "payout_value": payout_value,
+                },
+            )
+            if state["size"] <= 0.0001:
+                continue
+            realized_delta = (payout_value * state["size"]) - state["cost_basis"]
+            state["resolved"] = True
+            state["payout_value"] = payout_value
+            state["realized_pnl"] += realized_delta
+            cumulative_realized += realized_delta
+            state["size"] = 0.0
+            state["cost_basis"] = 0.0
+            open_positions = max(open_positions - 1, 0)
 
         cumulative_unrealized = sum(_mark_position_unrealized(state) for state in timeline_state.values())
         timeline.append({
-            "ts": settlement_ts,
+            "ts": point_ts,
             "realized_pnl": round(cumulative_realized, 2),
             "unrealized_pnl": round(cumulative_unrealized, 2),
             "total_pnl": round(cumulative_realized + cumulative_unrealized, 2),
@@ -183,48 +188,74 @@ def _build_wallet_pnl_timeline(trade_rows, position_state):
     return timeline
 
 
-def _build_wallet_detail_payload(conn, wallet: str):
-    wallet_row = conn.execute(
-        """
-        SELECT w.*,
-               (SELECT COUNT(*) FROM target_trades tt WHERE tt.wallet = w.address) as trade_count,
-               (SELECT COALESCE(SUM(pt.cost_usd), 0)
-                FROM paper_trades pt
-                JOIN target_trades tt ON pt.target_trade_id = tt.id
-                WHERE tt.wallet = w.address) as paper_volume
-        FROM wallets w
-        WHERE w.address = ?
-        """,
-        (wallet,),
-    ).fetchone()
+def _downsample_wallet_timeline(timeline, max_points=WALLET_TIMELINE_MAX_POINTS):
+    if len(timeline) <= max_points:
+        return timeline
 
-    if wallet_row:
-        wallet_data = dict(wallet_row)
-    else:
-        trade_stats = conn.execute(
-            """
-            SELECT ? as address,
-                   '' as alias,
-                   'observed' as source,
-                   0.0 as leaderboard_pnl,
-                   0.0 as leaderboard_vol,
-                   MIN(tt.created_at) as added_at,
-                   0 as tracking_enabled,
-                   NULL as enabled_at,
-                   NULL as disabled_at,
-                   COUNT(*) as trade_count,
-                   COALESCE(SUM(pt.cost_usd), 0) as paper_volume
-            FROM target_trades tt
-            LEFT JOIN paper_trades pt ON pt.target_trade_id = tt.id
-            WHERE tt.wallet = ?
-            """,
-            (wallet, wallet),
-        ).fetchone()
-        if not trade_stats or not trade_stats["trade_count"]:
-            return None
-        wallet_data = dict(trade_stats)
+    step = max((len(timeline) - 1) / float(max_points - 1), 1.0)
+    sampled = []
+    for index in range(max_points - 1):
+        source_index = min(int(round(index * step)), len(timeline) - 2)
+        sampled.append(timeline[source_index])
+    sampled.append(timeline[-1])
+    return sampled
 
-    rows = conn.execute(
+
+def _wallet_trade_search_text(trade):
+    outcomes = trade.get("outcomes") or []
+    outcome_label = trade.get("outcome")
+    if outcome_label is None:
+        outcome_label = outcomes[trade.get("outcome_idx") or 0] if outcomes else ""
+    values = [
+        trade.get("question") or "",
+        trade.get("group_item_title") or "",
+        trade.get("category") or "",
+        outcome_label,
+        trade.get("tx_hash") or "",
+        trade.get("wallet") or "",
+        trade.get("position_effect") or trade.get("status") or "",
+        trade.get("no_fill_reason") or "",
+        trade.get("position_mismatch_reason") or trade.get("notes") or "",
+    ]
+    return " ".join(values).lower()
+
+
+def _wallet_trade_status(trade):
+    if trade.get("paper_id") is None:
+        return "Unsimulated"
+    if trade.get("no_fill_reason"):
+        return f"No Fill: {trade['no_fill_reason']}"
+    if trade.get("position_mismatch_reason"):
+        return f"Mismatch: {trade['position_mismatch_reason']}"
+    if (trade.get("paper_size") or 0) > 0:
+        return "Filled"
+    return "Pending"
+
+
+def _wallet_trade_sort_value(trade, sort_by):
+    outcomes = trade.get("outcomes") or []
+    outcome_idx = trade.get("outcome_idx")
+    outcome_label = outcomes[outcome_idx] if outcomes and outcome_idx is not None and 0 <= outcome_idx < len(outcomes) else ""
+    if sort_by == "question":
+        return str(trade.get("question") or "").lower()
+    if sort_by == "outcome":
+        return outcome_label.lower()
+    if sort_by == "target_side":
+        return str(trade.get("target_side") or "").lower()
+    if sort_by == "position_effect":
+        return str(trade.get("position_effect") or "").lower()
+    if sort_by == "status":
+        return _wallet_trade_status(trade).lower()
+    if sort_by == "onchain_ts":
+        return float(trade.get("onchain_ts") or 0.0)
+    numeric_value = trade.get(sort_by)
+    if numeric_value is None:
+        return float("-inf")
+    return float(numeric_value)
+
+
+def _fetch_wallet_trade_rows(conn, wallet: str):
+    return conn.execute(
         """
         SELECT tt.id as target_id, tt.wallet, tt.token_id, tt.tx_hash, tt.block_number,
                tt.side as target_side, tt.size as target_size, tt.price as target_price,
@@ -235,7 +266,7 @@ def _build_wallet_detail_payload(conn, wallet: str):
                pt.source_position_fraction, pt.source_wallet_position_before, pt.position_mismatch_reason,
                pt.created_at as paper_created_at,
                m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category,
-               m.group_item_title, m.slug,
+               m.group_item_title, m.slug, m.resolved_at,
                wp.updated_at as wallet_position_updated_at,
                (SELECT pt2.avg_price FROM paper_trades pt2
                 WHERE pt2.token_id = tt.token_id
@@ -249,6 +280,10 @@ def _build_wallet_detail_payload(conn, wallet: str):
         """,
         (wallet,),
     ).fetchall()
+
+
+def _build_wallet_trade_history(conn, wallet: str):
+    rows = _fetch_wallet_trade_rows(conn, wallet)
 
     position_state = {}
     trade_rows = []
@@ -314,6 +349,7 @@ def _build_wallet_detail_payload(conn, wallet: str):
         trade["position_effect"] = "No Fill"
         trade["realized_pnl"] = 0.0
         trade["trade_pnl"] = None
+        trade["status"] = _wallet_trade_status(trade)
 
         if trade.get("paper_id") is not None:
             latency_total += float(trade.get("total_delay_ms") or 0.0)
@@ -362,7 +398,6 @@ def _build_wallet_detail_payload(conn, wallet: str):
 
             reference_price = trade.get("payout_value") if trade.get("resolved") else trade.get("last_price")
             if reference_price is None:
-                # Missing market data should not invent trade PnL; fall back to our fill price.
                 reference_price = paper_price
             reference_price = float(reference_price)
             if side == "BUY":
@@ -371,6 +406,7 @@ def _build_wallet_detail_payload(conn, wallet: str):
                 trade["trade_pnl"] = round((paper_price - reference_price) * paper_size, 2)
 
             filled_trade_pnls.append(trade["trade_pnl"])
+            trade["status"] = _wallet_trade_status(trade)
         else:
             no_fill_count += 1
 
@@ -455,7 +491,6 @@ def _build_wallet_detail_payload(conn, wallet: str):
     positions.sort(key=lambda item: (item["status"] != "Open", item["total_pnl"]))
     trade_rows.reverse()
     pnl_timeline = _build_wallet_pnl_timeline(list(reversed(trade_rows)), position_state)
-
     summary = {
         "total_target_trades": len(rows),
         "paper_trade_rows": sum(1 for row in trade_rows if row.get("paper_id") is not None),
@@ -475,14 +510,345 @@ def _build_wallet_detail_payload(conn, wallet: str):
         "losing_trades": sum(1 for value in filled_trade_pnls if value < -0.01),
         "flat_trades": sum(1 for value in filled_trade_pnls if abs(value) <= 0.01),
     }
+    return {
+        "trade_rows": trade_rows,
+        "positions": positions,
+        "summary": summary,
+        "pnl_timeline": pnl_timeline,
+    }
+
+
+def _build_wallet_detail_payload(conn, wallet: str):
+    wallet_row = conn.execute(
+        """
+        SELECT w.*,
+               (SELECT COUNT(*) FROM target_trades tt WHERE tt.wallet = w.address) as trade_count,
+               (SELECT COALESCE(SUM(pt.cost_usd), 0)
+                FROM paper_trades pt
+                JOIN target_trades tt ON pt.target_trade_id = tt.id
+                WHERE tt.wallet = w.address) as paper_volume
+        FROM wallets w
+        WHERE w.address = ?
+        """,
+        (wallet,),
+    ).fetchone()
+
+    if wallet_row:
+        wallet_data = dict(wallet_row)
+    else:
+        trade_stats = conn.execute(
+            """
+            SELECT ? as address,
+                   '' as alias,
+                   'observed' as source,
+                   0.0 as leaderboard_pnl,
+                   0.0 as leaderboard_vol,
+                   MIN(tt.created_at) as added_at,
+                   0 as tracking_enabled,
+                   NULL as enabled_at,
+                   NULL as disabled_at,
+                   COUNT(*) as trade_count,
+                   COALESCE(SUM(pt.cost_usd), 0) as paper_volume
+            FROM target_trades tt
+            LEFT JOIN paper_trades pt ON pt.target_trade_id = tt.id
+            WHERE tt.wallet = ?
+            """,
+            (wallet, wallet),
+        ).fetchone()
+        if not trade_stats or not trade_stats["trade_count"]:
+            return None
+        wallet_data = dict(trade_stats)
+
+    trade_history = _build_wallet_trade_history(conn, wallet)
+    summary = dict(trade_history["summary"])
+    summary["trade_count"] = summary["total_target_trades"]
+    summary["timeline_total_points"] = len(trade_history["pnl_timeline"])
+    summary["buy_entry_count"] = sum(
+        1 for row in trade_history["trade_rows"]
+        if ((row.get("paper_side") or row.get("target_side") or "").upper() == "BUY")
+    )
+    summary["filled_buy_entry_count"] = sum(
+        1 for row in trade_history["trade_rows"]
+        if ((row.get("paper_side") or row.get("target_side") or "").upper() == "BUY")
+        and row.get("paper_id") is not None
+        and not row.get("no_fill_reason")
+        and (row.get("paper_size") or 0) > 0
+    )
+    summary["no_fill_buy_entry_count"] = sum(
+        1 for row in trade_history["trade_rows"]
+        if ((row.get("paper_side") or row.get("target_side") or "").upper() == "BUY")
+        and (row.get("no_fill_reason") or (row.get("paper_id") is not None and (row.get("paper_size") or 0) <= 0))
+    )
 
     return {
         "wallet": wallet_data,
         "summary": summary,
-        "positions": positions,
-        "trades": trade_rows,
-        "pnl_timeline": pnl_timeline,
+        "positions": trade_history["positions"],
+        "pnl_timeline": _downsample_wallet_timeline(trade_history["pnl_timeline"]),
+        "realized_trade_points": _build_wallet_realized_trade_points(conn, wallet),
     }
+
+
+def _wallet_buy_row_sort_value(row, sort_by):
+    if sort_by in {"entry_ts", "closed_ts"}:
+        return float(row.get(sort_by) or 0.0)
+    if sort_by in {"question", "outcome", "category", "status"}:
+        return str(row.get(sort_by) or "").lower()
+    numeric_value = row.get(sort_by)
+    if numeric_value is None:
+        return float("-inf")
+    return float(numeric_value)
+
+
+def _build_wallet_buy_outcome_rows(conn, wallet: str):
+    rows = _fetch_wallet_trade_rows(conn, wallet)
+    token_state = {}
+    open_lots = {}
+    buy_rows = []
+
+    for raw_row in rows:
+        trade = dict(raw_row)
+        trade["outcomes"] = _decode_outcomes(trade.get("outcomes"))
+        token_id = trade["token_id"]
+        outcomes = trade.get("outcomes") or []
+        outcome_idx = trade.get("outcome_idx")
+        outcome_label = outcomes[outcome_idx] if outcomes and outcome_idx is not None and 0 <= outcome_idx < len(outcomes) else "?"
+        state = token_state.setdefault(
+            token_id,
+            {
+                "resolved": bool(trade.get("resolved")),
+                "payout_value": trade.get("payout_value"),
+                "last_price": trade.get("last_price"),
+                "wallet_position_updated_at": trade.get("wallet_position_updated_at"),
+                "resolved_at": trade.get("resolved_at"),
+            },
+        )
+        state["resolved"] = bool(trade.get("resolved")) if trade.get("resolved") is not None else state["resolved"]
+        state["payout_value"] = trade.get("payout_value") if trade.get("payout_value") is not None else state["payout_value"]
+        state["last_price"] = trade.get("last_price") if trade.get("last_price") is not None else state["last_price"]
+        state["wallet_position_updated_at"] = (
+            trade.get("wallet_position_updated_at")
+            if trade.get("wallet_position_updated_at") is not None
+            else state["wallet_position_updated_at"]
+        )
+        state["resolved_at"] = trade.get("resolved_at") if trade.get("resolved_at") is not None else state["resolved_at"]
+
+        filled = trade.get("paper_id") is not None and not trade.get("no_fill_reason") and (trade.get("paper_size") or 0) > 0
+        side = (trade.get("paper_side") or trade.get("target_side") or "").upper()
+
+        if side == "BUY":
+            buy_row = {
+                "entry_target_id": trade.get("target_id"),
+                "entry_paper_id": trade.get("paper_id"),
+                "wallet": trade.get("wallet"),
+                "token_id": token_id,
+                "tx_hash": trade.get("tx_hash"),
+                "question": trade.get("question") or token_id,
+                "outcome": outcome_label,
+                "category": trade.get("category") or "Other",
+                "slug": trade.get("slug"),
+                "entry_ts": trade.get("onchain_ts"),
+                "entry_price": float(trade.get("paper_price") or trade.get("target_price") or 0.0),
+                "target_price": float(trade.get("target_price") or 0.0),
+                "entry_size": float(trade.get("paper_size") or trade.get("requested_size") or trade.get("target_size") or 0.0),
+                "filled_size": float(trade.get("paper_size") or 0.0),
+                "entry_cost": float(trade.get("paper_cost") or trade.get("target_cost") or 0.0),
+                "requested_size": float(trade.get("requested_size") or trade.get("target_size") or 0.0),
+                "slippage": float(trade.get("slippage") or 0.0) if trade.get("paper_id") is not None else None,
+                "latency_seconds": (float(trade.get("total_delay_ms") or 0.0) / 1000.0) if trade.get("paper_id") is not None else None,
+                "status": "No Fill" if not filled else "Open",
+                "close_reason": "no_fill" if not filled else None,
+                "notes": trade.get("position_mismatch_reason") or trade.get("no_fill_reason") or "",
+                "closed_ts": None,
+                "hold_seconds": None,
+                "closed_size": 0.0,
+                "remaining_size": float(trade.get("paper_size") or 0.0),
+                "exit_proceeds": 0.0,
+                "avg_exit_value": None,
+                "realized_pnl": None if not filled else 0.0,
+                "unrealized_pnl": None if not filled else 0.0,
+                "total_pnl": None if not filled else 0.0,
+                "book_available": bool(trade.get("paper_id")),
+            }
+            buy_rows.append(buy_row)
+            if filled:
+                open_lots.setdefault(token_id, []).append(buy_row)
+            continue
+
+        if side != "SELL" or not filled:
+            continue
+
+        remaining_to_close = float(trade.get("paper_size") or 0.0)
+        sell_price = float(trade.get("paper_price") or 0.0)
+        closed_ts = trade.get("paper_created_at") or trade.get("target_created_at") or trade.get("onchain_ts")
+        for lot in open_lots.get(token_id, []):
+            if remaining_to_close <= 0.0001:
+                break
+            lot_open_size = float(lot.get("remaining_size") or 0.0)
+            if lot_open_size <= 0.0001:
+                continue
+
+            matched_size = min(lot_open_size, remaining_to_close)
+            remaining_to_close -= matched_size
+            lot["remaining_size"] = round(max(lot_open_size - matched_size, 0.0), 8)
+            lot["closed_size"] += matched_size
+            lot["exit_proceeds"] += matched_size * sell_price
+            lot["realized_pnl"] = round(float(lot.get("realized_pnl") or 0.0) + (matched_size * (sell_price - lot["entry_price"])), 2)
+            lot["avg_exit_value"] = round(lot["exit_proceeds"] / lot["closed_size"], 4) if lot["closed_size"] > 0.0001 else None
+            lot["closed_ts"] = closed_ts
+            lot["hold_seconds"] = max(float(closed_ts or 0.0) - float(lot.get("entry_ts") or 0.0), 0.0) if closed_ts is not None else None
+            lot["close_reason"] = "sell_partial" if lot["remaining_size"] > 0.0001 else "sell"
+            lot["status"] = "Partially Closed" if lot["remaining_size"] > 0.0001 else "Closed"
+
+    for token_id, lots in open_lots.items():
+        state = token_state.get(token_id, {})
+        resolved = bool(state.get("resolved"))
+        payout_value = state.get("payout_value")
+        last_price = state.get("last_price")
+        close_ts = state.get("wallet_position_updated_at") or state.get("resolved_at")
+
+        for lot in lots:
+            remaining_size = float(lot.get("remaining_size") or 0.0)
+            if remaining_size <= 0.0001:
+                lot["unrealized_pnl"] = 0.0
+                lot["total_pnl"] = round(float(lot.get("realized_pnl") or 0.0), 2) if lot.get("realized_pnl") is not None else None
+                continue
+
+            if resolved:
+                payout = float(payout_value or 0.0)
+                lot["exit_proceeds"] += remaining_size * payout
+                lot["closed_size"] += remaining_size
+                lot["remaining_size"] = 0.0
+                lot["avg_exit_value"] = round(lot["exit_proceeds"] / lot["closed_size"], 4) if lot["closed_size"] > 0.0001 else None
+                realized_delta = remaining_size * (payout - lot["entry_price"])
+                lot["realized_pnl"] = round(float(lot.get("realized_pnl") or 0.0) + realized_delta, 2)
+                lot["unrealized_pnl"] = 0.0
+                lot["total_pnl"] = round(float(lot["realized_pnl"]), 2)
+                lot["closed_ts"] = close_ts
+                lot["hold_seconds"] = max(float(close_ts or 0.0) - float(lot.get("entry_ts") or 0.0), 0.0) if close_ts is not None else None
+                lot["close_reason"] = "resolved"
+                lot["status"] = "Resolved"
+            else:
+                mark_price = float(last_price) if last_price is not None else float(lot["entry_price"])
+                lot["unrealized_pnl"] = round(remaining_size * (mark_price - lot["entry_price"]), 2)
+                lot["total_pnl"] = round(float(lot.get("realized_pnl") or 0.0) + float(lot["unrealized_pnl"]), 2)
+                if lot["closed_size"] > 0.0001:
+                    lot["status"] = "Partially Closed"
+                    lot["close_reason"] = "sell_partial"
+                else:
+                    lot["status"] = "Open"
+                    lot["close_reason"] = None
+
+    for lot in buy_rows:
+        if lot["realized_pnl"] is None:
+            lot["avg_exit_value"] = None
+            lot["hold_seconds"] = None
+            lot["remaining_size"] = 0.0
+            lot["closed_size"] = 0.0
+            lot["unrealized_pnl"] = None
+            lot["total_pnl"] = None
+        else:
+            lot["remaining_size"] = round(float(lot.get("remaining_size") or 0.0), 4)
+            lot["closed_size"] = round(float(lot.get("closed_size") or 0.0), 4)
+            lot["realized_pnl"] = round(float(lot.get("realized_pnl") or 0.0), 2)
+            lot["unrealized_pnl"] = round(float(lot.get("unrealized_pnl") or 0.0), 2)
+            lot["total_pnl"] = round(float(lot.get("total_pnl") or 0.0), 2)
+            lot["avg_exit_value"] = round(float(lot["avg_exit_value"]), 4) if lot.get("avg_exit_value") is not None else None
+
+    return buy_rows
+
+
+def _build_wallet_realized_trade_points(conn, wallet: str):
+    points = []
+    for row in _build_wallet_buy_outcome_rows(conn, wallet):
+        closed_ts = row.get("closed_ts")
+        realized_pnl = row.get("realized_pnl")
+        if closed_ts is None or realized_pnl is None:
+            continue
+
+        points.append({
+            "ts": round(float(closed_ts), 3),
+            "realized_pnl": round(float(realized_pnl), 2),
+            "question": row.get("question"),
+            "outcome": row.get("outcome"),
+            "status": row.get("status"),
+            "category": row.get("category"),
+            "token_id": row.get("token_id"),
+            "slug": row.get("slug"),
+            "entry_ts": row.get("entry_ts"),
+            "closed_ts": closed_ts,
+            "hold_seconds": row.get("hold_seconds"),
+        })
+
+    points.sort(key=lambda item: (float(item.get("ts") or 0.0), float(item.get("realized_pnl") or 0.0)))
+    return points
+
+
+def _build_wallet_trade_rows(conn, wallet: str, limit: int, offset: int, sort_by: str, sort_dir: str, search: str = "", start_date: str = "", end_date: str = ""):
+    rows = _build_wallet_buy_outcome_rows(conn, wallet)
+
+    start_ts = _parse_date_bound(start_date, is_end=False)
+    end_ts = _parse_date_bound(end_date, is_end=True)
+    if start_ts is not None:
+        rows = [trade for trade in rows if float(trade.get("entry_ts") or 0.0) >= start_ts]
+    if end_ts is not None:
+        rows = [trade for trade in rows if float(trade.get("entry_ts") or 0.0) < end_ts]
+
+    search = (search or "").strip().lower()
+    if search:
+        rows = [trade for trade in rows if search in _wallet_trade_search_text(trade)]
+
+    reverse = sort_dir == "desc"
+    rows = sorted(rows, key=lambda trade: _wallet_buy_row_sort_value(trade, sort_by), reverse=reverse)
+    total = len(rows)
+    page_rows = rows[offset: offset + limit]
+
+    return {
+        "rows": page_rows,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "sort_by": sort_by,
+        "sort_dir": sort_dir,
+        "search": search,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+
+
+def _parse_date_bound(value: str, is_end: bool = False):
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+        try:
+            parsed = datetime.strptime(value, fmt)
+            if fmt == "%Y-%m-%d" and is_end:
+                parsed = parsed + timedelta(days=1)
+            return parsed.timestamp()
+        except ValueError:
+            continue
+    return None
+
+
+WALLET_TRADE_SORT_FIELDS = {
+    "entry_ts",
+    "closed_ts",
+    "question",
+    "outcome",
+    "category",
+    "entry_size",
+    "entry_price",
+    "entry_cost",
+    "closed_size",
+    "remaining_size",
+    "avg_exit_value",
+    "realized_pnl",
+    "unrealized_pnl",
+    "total_pnl",
+    "latency_seconds",
+    "hold_seconds",
+    "status",
+}
 
 
 class DashboardHandler(SimpleHTTPRequestHandler):
@@ -548,6 +914,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self._api_trades(conn, params)
             elif path == "/api/wallet_detail":
                 self._api_wallet_detail(conn, params)
+            elif path == "/api/wallet_detail_trades":
+                self._api_wallet_detail_trades(conn, params)
             elif path == "/api/positions":
                 self._api_positions(conn, params)
             elif path == "/api/markets":
@@ -800,6 +1168,38 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             return
         self._json_response(payload)
 
+    def _api_wallet_detail_trades(self, conn, params):
+        wallet = (params.get("wallet", [None])[0] or "").strip().lower()
+        if not wallet:
+            self._json_response({"error": "missing wallet"}, 400)
+            return
+
+        limit = min(max(int(params.get("limit", [WALLET_TRADE_PAGE_SIZE_DEFAULT])[0]), 1), WALLET_TRADE_PAGE_SIZE_MAX)
+        offset = max(int(params.get("offset", [0])[0]), 0)
+        sort_by = (params.get("sort_by", ["entry_ts"])[0] or "entry_ts").strip()
+        sort_dir = (params.get("sort_dir", ["desc"])[0] or "desc").strip().lower()
+        search = (params.get("search", [""])[0] or "").strip()
+        start_date = (params.get("start_date", [""])[0] or "").strip()
+        end_date = (params.get("end_date", [""])[0] or "").strip()
+
+        if sort_by not in WALLET_TRADE_SORT_FIELDS:
+            sort_by = "entry_ts"
+        if sort_dir not in {"asc", "desc"}:
+            sort_dir = "desc"
+
+        payload = _build_wallet_trade_rows(
+            conn,
+            wallet,
+            limit=limit,
+            offset=offset,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            search=search,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        self._json_response(payload)
+
     def _api_markets(self, conn, params):
         resolved_filter = params.get("resolved", [None])[0]
         query = "SELECT * FROM markets WHERE 1=1"
@@ -958,7 +1358,12 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
 
 def main():
-    init_db()
+    try:
+        init_db()
+    except sqlite3.OperationalError as exc:
+        if "database is locked" not in str(exc).lower():
+            raise
+        log.warning("dashboard_init_db_locked", error=str(exc))
     STATIC_DIR.mkdir(parents=True, exist_ok=True)
     log.info("dashboard_start", url=f"http://localhost:{PORT}", port=PORT)
     server = HTTPServer(("0.0.0.0", PORT), DashboardHandler)

@@ -8,8 +8,9 @@
     <meta name="description" content="Real-time paper trading dashboard for Polymarket copy-trading strategy">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
+    <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=20260303b">
+    <link rel="stylesheet" href="style.css?v=20260303c">
 </head>
 
 <body>
@@ -421,6 +422,23 @@
 
             <div class="wallet-section">
                 <div class="wallet-section-header">
+                    <div>
+                        <h4>Realized Profit</h4>
+                        <div class="wallet-chart-controls">
+                            <button class="btn btn-sm wallet-chart-toggle active" id="wallet-realized-mode-15m" onclick="setWalletRealizedMode('15m')">15m</button>
+                            <button class="btn btn-sm wallet-chart-toggle" id="wallet-realized-mode-1h" onclick="setWalletRealizedMode('1h')">1h</button>
+                            <button class="btn btn-sm wallet-chart-toggle" id="wallet-realized-mode-trade" onclick="setWalletRealizedMode('trade')">Per Trade</button>
+                        </div>
+                    </div>
+                    <span id="wallet-realized-meta" class="section-meta"></span>
+                </div>
+                <div class="card chart-card wallet-chart-card">
+                    <canvas id="wallet-realized-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="wallet-section">
+                <div class="wallet-section-header">
                     <h4>Current Open Positions</h4>
                     <span id="wallet-positions-meta" class="section-meta"></span>
                 </div>
@@ -452,42 +470,32 @@
 
             <div class="wallet-section">
                 <div class="wallet-section-header">
-                    <h4>Tracked Trades + Derived Position Effects</h4>
+                    <div>
+                        <h4>Buy Entries + Outcomes</h4>
+                        <div class="wallet-range-controls">
+                            <div class="filter-group wallet-range-group">
+                                <label for="wallet-trades-start-date">From</label>
+                                <input id="wallet-trades-start-date" type="datetime-local" step="60">
+                            </div>
+                            <div class="filter-group wallet-range-group">
+                                <label for="wallet-trades-end-date">To</label>
+                                <input id="wallet-trades-end-date" type="datetime-local" step="60">
+                            </div>
+                            <button class="btn btn-sm" onclick="applyWalletTradesRange()">Apply</button>
+                            <button class="btn btn-sm btn-ghost" onclick="clearWalletTradesRange()">Clear</button>
+                        </div>
+                    </div>
                     <span id="wallet-trades-meta" class="section-meta"></span>
                 </div>
-                <div class="table-wrapper wallet-table-wrapper">
-                    <table class="data-table" id="wallet-trades-table">
-                        <thead>
-                            <tr>
-                                <th class="sortable" data-sort-type="time">Time</th>
-                                <th class="sortable" data-sort-type="string">Market</th>
-                                <th class="sortable" data-sort-type="string">Outcome</th>
-                                <th class="sortable" data-sort-type="string">Side</th>
-                                <th class="sortable" data-sort-type="string">Position Effect</th>
-                                <th class="sortable" data-sort-type="number">Target Size</th>
-                                <th class="sortable" data-sort-type="number">Target Price</th>
-                                <th class="sortable" data-sort-type="number">Target Cost</th>
-                                <th class="sortable" data-sort-type="number">Paper Requested</th>
-                                <th class="sortable" data-sort-type="number">Paper Filled</th>
-                                <th class="sortable" data-sort-type="number">Paper Price</th>
-                                <th class="sortable" data-sort-type="number">Source Pos Before</th>
-                                <th class="sortable" data-sort-type="number">Exit %</th>
-                                <th class="sortable" data-sort-type="number">Slippage</th>
-                                <th class="sortable" data-sort-type="number">Trade PnL</th>
-                                <th class="sortable" data-sort-type="number">Realized PnL</th>
-                                <th class="sortable" data-sort-type="number">Latency</th>
-                                <th class="sortable" data-sort-type="string">Fill / Mismatch</th>
-                                <th>Book</th>
-                            </tr>
-                        </thead>
-                        <tbody id="wallet-trades-tbody"></tbody>
-                    </table>
+                <div class="wallet-grid-shell">
+                    <div id="wallet-trades-grid"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="app.js?v=20260303b"></script>
+    <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+    <script src="app.js?v=20260303c"></script>
 </body>
 
 </html>

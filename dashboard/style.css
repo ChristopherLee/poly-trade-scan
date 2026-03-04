@@ -578,6 +578,10 @@ body {
     padding: 1rem 1.25rem 0.75rem;
 }
 
+#wallet-realized-chart {
+    min-height: 220px;
+}
+
 .wallet-section {
     margin-top: 1.25rem;
 }
@@ -595,6 +599,35 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-secondary);
+}
+
+.wallet-range-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.65rem;
+    margin-top: 0.6rem;
+}
+
+.wallet-chart-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.6rem;
+}
+
+.wallet-chart-toggle {
+    min-width: 72px;
+}
+
+.wallet-chart-toggle.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.wallet-range-group {
+    min-width: 132px;
 }
 
 .section-meta {
@@ -629,7 +662,161 @@ body {
     font-size: 0.72rem;
     line-height: 1.35;
     color: var(--text-muted);
-    max-width: 220px;
+    max-width: 160px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.wallet-grid-shell {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--bg-card);
+}
+
+.wallet-grid-empty {
+    padding: 1rem;
+    color: var(--text-muted);
+}
+
+.wallet-grid-market {
+    min-width: 180px;
+    max-width: 260px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.wallet-grid-shell .gridjs-container {
+    overflow: hidden;
+}
+
+.wallet-grid-shell .gridjs-wrapper {
+    border: 0;
+    box-shadow: none;
+    overflow: auto;
+    max-height: 48vh;
+}
+
+.wallet-grid-shell .gridjs-head {
+    padding: 0.85rem 0.85rem 0;
+    background: transparent;
+}
+
+.wallet-grid-shell .gridjs-search {
+    float: none;
+}
+
+.wallet-grid-shell .gridjs-search-input {
+    width: min(320px, 100%);
+    padding: 0.65rem 0.8rem;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+}
+
+.wallet-grid-shell .gridjs-search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+}
+
+.wallet-grid-shell .gridjs-table {
+    width: max-content;
+    min-width: 1120px;
+    border-collapse: collapse;
+    background: var(--bg-card);
+}
+
+.wallet-grid-shell .gridjs-th {
+    padding: 0.55rem 0.7rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.wallet-grid-shell .gridjs-tr {
+    background: var(--bg-card);
+}
+
+.wallet-grid-shell .gridjs-th-content,
+.wallet-grid-shell .gridjs-td {
+    font-family: inherit;
+}
+
+.wallet-grid-shell .gridjs-td {
+    padding: 0.45rem 0.7rem;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+    background: var(--bg-card) !important;
+}
+
+.wallet-grid-shell .gridjs-th:first-child,
+.wallet-grid-shell .gridjs-td:first-child {
+    min-width: 126px;
+}
+
+.wallet-grid-shell .gridjs-th:nth-child(2),
+.wallet-grid-shell .gridjs-td:nth-child(2) {
+    min-width: 220px;
+    max-width: 260px;
+    white-space: normal;
+}
+
+.wallet-grid-shell .gridjs-th:nth-child(18),
+.wallet-grid-shell .gridjs-td:nth-child(18) {
+    min-width: 150px;
+    max-width: 180px;
+    white-space: normal;
+}
+
+.wallet-grid-shell .gridjs-th:last-child,
+.wallet-grid-shell .gridjs-td:last-child {
+    min-width: 72px;
+}
+
+.wallet-grid-shell .gridjs-tr:hover,
+.wallet-grid-shell .gridjs-tr:hover .gridjs-td {
+    background: var(--bg-card) !important;
+}
+
+.wallet-grid-shell .gridjs-footer {
+    padding: 0.85rem 1rem 1rem;
+    background: transparent;
+    border-top: 0;
+    box-shadow: none;
+}
+
+.wallet-grid-shell .gridjs-pagination .gridjs-pages button,
+.wallet-grid-shell .gridjs-pagination .gridjs-summary {
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+}
+
+.wallet-grid-shell .gridjs-pagination .gridjs-pages button:hover {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+}
+
+.wallet-grid-shell .gridjs-pagination .gridjs-pages button.gridjs-currentPage {
+    color: white;
+    background: var(--accent);
+    border-color: var(--accent);
 }
 
 /* ── Responsive ───────────────────────────────────────────────── */
