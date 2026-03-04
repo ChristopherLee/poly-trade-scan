@@ -59,6 +59,8 @@ def get_connection(db_path: Optional[str] = None) -> ManagedConnection:
     conn = sqlite3.connect(db_path or str(DB_PATH), timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA journal_mode=WAL")
     return ManagedConnection(conn)
 
 
@@ -282,7 +284,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
         """
         UPDATE wallets
         SET enabled_at = COALESCE(enabled_at, added_at, ?)
-        WHERE tracking_enabled = 1
+        WHERE tracking_enabled = 1 AND enabled_at IS NULL
         """,
         (time.time(),),
     )
