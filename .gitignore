@@ -18,6 +18,8 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+node_modules/
+.next/
 downloads/
 eggs/
 .eggs/

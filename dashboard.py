@@ -981,28 +981,56 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def _api_wallets(self, conn):
         rows = conn.execute("""
-            SELECT w.*,
-                   (SELECT COUNT(*) FROM target_trades tt WHERE tt.wallet = w.address) as trade_count,
-                   (SELECT COALESCE(SUM(pt.cost_usd), 0) FROM paper_trades pt
-                    JOIN target_trades tt ON pt.target_trade_id = tt.id
-                    WHERE tt.wallet = w.address) as paper_volume
+            WITH trade_rollup AS (
+                SELECT
+                    tt.wallet,
+                    COUNT(*) AS trade_count,
+                    COALESCE(SUM(pt.cost_usd), 0) AS paper_volume
+                FROM target_trades tt
+                LEFT JOIN paper_trades pt ON pt.target_trade_id = tt.id
+                GROUP BY tt.wallet
+            ),
+            latest_prices AS (
+                SELECT pt.token_id, pt.avg_price AS last_price
+                FROM paper_trades pt
+                JOIN (
+                    SELECT token_id, MAX(created_at) AS max_created_at
+                    FROM paper_trades
+                    GROUP BY token_id
+                ) latest
+                  ON latest.token_id = pt.token_id
+                 AND latest.max_created_at = pt.created_at
+            ),
+            wallet_position_rollup AS (
+                SELECT
+                    wp.wallet,
+                    COALESCE(SUM(wp.realized_pnl), 0) AS realized_pnl,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN wp.size <= 0.0001 THEN 0
+                            WHEN COALESCE(m.resolved, 0) = 1 THEN
+                                (COALESCE(m.payout_value, 0) * wp.size) - wp.cost_basis
+                            ELSE
+                                ((COALESCE(lp.last_price, wp.cost_basis / NULLIF(wp.size, 0))) * wp.size) - wp.cost_basis
+                        END
+                    ), 0) AS unrealized_pnl
+                FROM wallet_positions wp
+                LEFT JOIN markets m ON m.token_id = wp.token_id
+                LEFT JOIN latest_prices lp ON lp.token_id = wp.token_id
+                GROUP BY wp.wallet
+            )
+            SELECT
+                   w.*,
+                   COALESCE(tr.trade_count, 0) AS trade_count,
+                   COALESCE(tr.paper_volume, 0) AS paper_volume,
+                   ROUND(COALESCE(wpr.realized_pnl, 0), 2) AS realized_pnl,
+                   ROUND(COALESCE(wpr.realized_pnl, 0) + COALESCE(wpr.unrealized_pnl, 0), 2) AS wallet_total_pnl
             FROM wallets w
+            LEFT JOIN trade_rollup tr ON tr.wallet = w.address
+            LEFT JOIN wallet_position_rollup wpr ON wpr.wallet = w.address
             ORDER BY w.tracking_enabled DESC, COALESCE(w.enabled_at, w.added_at) DESC, w.leaderboard_pnl DESC
         """).fetchall()
-        result = []
-        for row in rows:
-            item = dict(row)
-            wallet = item["address"]
-            if item.get("trade_count"):
-                payload = _build_wallet_detail_payload(conn, wallet)
-                summary = payload["summary"] if payload else {}
-                item["realized_pnl"] = summary.get("realized_pnl", 0.0)
-                item["wallet_total_pnl"] = summary.get("total_pnl", 0.0)
-            else:
-                item["realized_pnl"] = 0.0
-                item["wallet_total_pnl"] = 0.0
-            result.append(item)
-        self._json_response(result)
+        self._json_response([dict(row) for row in rows])
 
     def _api_add_wallet(self, conn, payload):
         address = (payload.get("address") or "").strip().lower()

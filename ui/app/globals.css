@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    @apply border-black/10;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-[#f7f4ee] text-slate-950 antialiased;
+  }
+
+  ::selection {
+    @apply bg-lagoon/25 text-ink;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-[28px] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)];
+  }
+
+  .panel-hero {
+    @apply rounded-[28px] border border-slate-900/10 bg-[linear-gradient(135deg,#0f172a_0%,#1f3b2f_100%)] text-white shadow-[0_20px_50px_rgba(15,23,42,0.18)];
+  }
+
+  .metric-card {
+    @apply rounded-[24px] border border-slate-200 bg-white/90 p-5;
+  }
+
+  .eyebrow {
+    @apply text-[11px] uppercase tracking-[0.28em] text-slate-500;
+  }
+}
