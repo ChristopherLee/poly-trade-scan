@@ -9,7 +9,7 @@ import type {
   WalletSummary,
   WalletTimelinePoint,
   WalletTradeRow,
-} from "@/lib/types";
+} from "@/dashboard-lib/types";
 import {
   formatAddress,
   formatDuration,
@@ -18,7 +18,7 @@ import {
   formatSignedMoney,
   formatTimestamp,
   pnlTone,
-} from "@/lib/format";
+} from "@/dashboard-lib/format";
 
 type SortField =
   | "wallet_total_pnl"

@@ -4,7 +4,7 @@ import { WalletDetailPage } from "@/components/tracked-wallets-page";
 import {
   getWalletDetail,
   getWalletTrades,
-} from "@/lib/dashboard-api";
+} from "@/dashboard-lib/dashboard-api";
 
 export const dynamic = "force-dynamic";
 
