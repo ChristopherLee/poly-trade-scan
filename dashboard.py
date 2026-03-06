@@ -1,6 +1,5 @@
 """Dashboard web server — serves API + static HTML for paper trade visualization."""
 import json
-import sqlite3
 import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime, timedelta
@@ -1388,10 +1387,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 def main():
     try:
         init_db()
-    except sqlite3.OperationalError as exc:
-        if "database is locked" not in str(exc).lower():
-            raise
-        log.warning("dashboard_init_db_locked", error=str(exc))
+    except Exception as exc:
+        log.warning("dashboard_init_db_error", error=str(exc))
     STATIC_DIR.mkdir(parents=True, exist_ok=True)
     log.info("dashboard_start", url=f"http://localhost:{PORT}", port=PORT)
     server = HTTPServer(("0.0.0.0", PORT), DashboardHandler)

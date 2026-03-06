@@ -8,6 +8,7 @@ dependencies = [
     "aiohttp",
     "eth-abi",
     "python-dotenv",
+    "psycopg[binary]",
     "requests",
     "typer",
     "websockets",

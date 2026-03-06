@@ -55,6 +55,21 @@ POLYGON_WSS_URL=wss://polygon.drpc.org
 
 You can use a public RPC for testing. Find available endpoints at: https://chainlist.org/?chain=137&search=polygon
 
+
+### Database (Supabase/Postgres)
+
+Set `SUPABASE_DB_URL` in your `.env` to point to your Supabase Postgres instance:
+
+```
+SUPABASE_DB_URL=postgresql://postgres:<password>@<host>:5432/postgres?sslmode=require
+```
+
+To migrate an existing local sqlite file into Supabase:
+
+```bash
+python scripts/migrate_sqlite_to_supabase.py --sqlite paper_trades.db
+```
+
 ### Wallet Tracking
 
 To track specific wallets, add their addresses to `config/wallets.txt` (one per line):
