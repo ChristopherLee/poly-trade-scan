@@ -930,6 +930,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self._api_latency_stats(conn)
             elif path == "/api/leaderboard":
                 self._api_leaderboard(params)
+            elif path == "/api/live_trades":
+                self._api_live_trades(conn, params)
+            elif path == "/api/live_pnl_over_time":
+                self._api_live_pnl_over_time(conn)
             else:
                 self._json_response({"error": "not found"}, 404)
         finally:
@@ -1355,6 +1359,43 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """).fetchall()
         self._json_response([dict(r) for r in rows])
 
+
+    def _api_live_trades(self, conn, params):
+        limit = min(max(int(params.get("limit", [100])[0]), 1), 500)
+        rows = conn.execute("""
+            SELECT lt.*, m.question, m.category
+            FROM live_trades lt
+            LEFT JOIN markets m ON m.token_id = lt.token_id
+            ORDER BY lt.created_at DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+
+        payload = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item["risk_flags"] = json.loads(item.get("risk_flags") or "[]")
+            except Exception:
+                item["risk_flags"] = []
+            payload.append(item)
+        self._json_response(payload)
+
+    def _api_live_pnl_over_time(self, conn):
+        rows = conn.execute("""
+            SELECT created_at, status, notional_usd
+            FROM live_trades
+            ORDER BY created_at ASC
+        """).fetchall()
+
+        cumulative = 0.0
+        points = []
+        for row in rows:
+            status = (row["status"] or "").upper()
+            if status == "FILLED":
+                cumulative -= float(row["notional_usd"] or 0.0)
+            points.append({"ts": row["created_at"], "cash_delta_cumulative": round(cumulative, 2)})
+
+        self._json_response(points)
     def _api_leaderboard(self, params):
         category = (params.get("category", ["overall"])[0] or "overall").lower()
         time_period = (params.get("time_period", ["MONTH"])[0] or "MONTH").upper()
