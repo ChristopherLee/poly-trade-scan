@@ -1,10 +1,13 @@
-"""SQLite persistence layer for the live paper trading simulator."""
-import sqlite3
+"""Postgres/Supabase persistence layer for the live paper trading simulator."""
 import json
+import os
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+import psycopg
+from psycopg.rows import dict_row
 
 DB_PATH = Path(__file__).parent.parent / "paper_trades.db"
 
@@ -24,15 +27,51 @@ INDEX_STATEMENTS = (
 )
 
 
+def _translate_query(query: str) -> str:
+    """Translate sqlite-style placeholders to Postgres placeholders."""
+    return query.replace("?", "%s")
+
+
+class ManagedCursor:
+    """Cursor wrapper for sqlite compatibility (fetch methods + rowcount)."""
+
+    def __init__(self, inner: psycopg.Cursor[Any]):
+        self._inner = inner
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    @property
+    def lastrowid(self) -> Optional[int]:
+        return None
+
+    def fetchone(self):
+        return self._inner.fetchone()
+
+    def fetchall(self):
+        return self._inner.fetchall()
+
+
 class ManagedConnection:
     """Thin wrapper that can suppress intermediate commits inside a transaction."""
 
-    def __init__(self, inner: sqlite3.Connection) -> None:
+    def __init__(self, inner: psycopg.Connection) -> None:
         self._inner = inner
         self._suppress_commit_depth = 0
 
     def __getattr__(self, name):
         return getattr(self._inner, name)
+
+    def execute(self, query: str, params: Optional[tuple | list] = None) -> ManagedCursor:
+        cur = self._inner.cursor(row_factory=dict_row)
+        cur.execute(_translate_query(query), params or ())
+        return ManagedCursor(cur)
+
+    def executescript(self, script: str) -> None:
+        for stmt in script.split(";"):
+            statement = stmt.strip()
+            if statement:
+                self.execute(statement)
 
     def commit(self) -> None:
         if self._suppress_commit_depth > 0:
@@ -56,25 +95,24 @@ class ManagedConnection:
 
 def get_connection(db_path: Optional[str] = None) -> ManagedConnection:
     """Return a configured connection for regular reads and writes."""
-    conn = sqlite3.connect(db_path or str(DB_PATH), timeout=30)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA busy_timeout=30000")
-    conn.execute("PRAGMA journal_mode=WAL")
+    dsn = db_path or os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL")
+    if not dsn:
+        raise RuntimeError(
+            "No database DSN configured. Set SUPABASE_DB_URL (preferred) or DATABASE_URL."
+        )
+    conn = psycopg.connect(dsn, connect_timeout=30)
+    conn.execute("SET statement_timeout TO '30s'")
     return ManagedConnection(conn)
 
 
 @contextmanager
 def transaction(conn: Optional[ManagedConnection] = None, db_path: Optional[str] = None):
-    """Context manager for a database transaction. 
-    If a connection is provided, it uses it and DOES NOT close it (for nested use).
-    If no connection is provided, it opens one, manages it, and closes it.
-    """
+    """Context manager for a database transaction."""
     should_close = False
     if conn is None:
         conn = get_connection(db_path)
         should_close = True
-    
+
     try:
         with conn.suppress_commits():
             yield conn
@@ -90,110 +128,111 @@ def transaction(conn: Optional[ManagedConnection] = None, db_path: Optional[str]
 def init_db(db_path: Optional[str] = None) -> None:
     """Create all tables if they don't exist."""
     conn = get_connection(db_path)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    cur = conn.cursor()
 
-    cur.executescript("""
+    conn.executescript("""
     CREATE TABLE IF NOT EXISTS wallets (
         address         TEXT PRIMARY KEY,
-        alias           TEXT,           -- pseudonym / username from leaderboard
-        source          TEXT,           -- 'leaderboard' or 'manual'
-        leaderboard_pnl REAL DEFAULT 0,
-        leaderboard_vol REAL DEFAULT 0,
-        added_at        REAL,           -- epoch
+        alias           TEXT,
+        source          TEXT,
+        leaderboard_pnl DOUBLE PRECISION DEFAULT 0,
+        leaderboard_vol DOUBLE PRECISION DEFAULT 0,
+        added_at        DOUBLE PRECISION,
         tracking_enabled INTEGER DEFAULT 1,
-        enabled_at      REAL,
-        disabled_at     REAL
+        enabled_at      DOUBLE PRECISION,
+        disabled_at     DOUBLE PRECISION
     );
 
     CREATE TABLE IF NOT EXISTS markets (
         token_id        TEXT PRIMARY KEY,
         condition_id    TEXT,
         question        TEXT,
-        outcomes        TEXT,           -- JSON array e.g. '["Yes","No"]'
-        outcome_idx     INTEGER,        -- which index this token represents
+        outcomes        TEXT,
+        outcome_idx     INTEGER,
         slug            TEXT,
-        category        TEXT,           -- e.g. 'Weather', 'Politics', 'Crypto'
-        group_item_title TEXT,          -- granular series/instrument bucket from Gamma
-        tags            TEXT,           -- JSON array of tag strings
+        category        TEXT,
+        group_item_title TEXT,
+        tags            TEXT,
         resolved        INTEGER DEFAULT 0,
-        winning_outcome INTEGER,        -- 0 or 1
-        payout_value    REAL,           -- 1.0 or 0.0 for this token
-        last_resolution_check REAL,     -- epoch when Gamma was last queried
-        next_resolution_check REAL,     -- epoch when Gamma should be queried next
+        winning_outcome INTEGER,
+        payout_value    DOUBLE PRECISION,
+        last_resolution_check DOUBLE PRECISION,
+        next_resolution_check DOUBLE PRECISION,
         resolution_check_failures INTEGER DEFAULT 0,
-        resolved_at     REAL,           -- epoch
-        first_seen      REAL            -- epoch
+        resolved_at     DOUBLE PRECISION,
+        first_seen      DOUBLE PRECISION
     );
 
     CREATE TABLE IF NOT EXISTS target_trades (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        id              BIGSERIAL PRIMARY KEY,
         wallet          TEXT NOT NULL,
         token_id        TEXT NOT NULL,
         tx_hash         TEXT,
         block_number    INTEGER,
-        side            TEXT NOT NULL,   -- 'BUY' or 'SELL'
-        size            REAL NOT NULL,   -- shares
-        price           REAL NOT NULL,
-        cost_usd        REAL NOT NULL,
-        onchain_ts      REAL NOT NULL,   -- block timestamp epoch
-        detected_ts     REAL NOT NULL,   -- our ws detection epoch
-        created_at      REAL NOT NULL,
+        side            TEXT NOT NULL,
+        size            DOUBLE PRECISION NOT NULL,
+        price           DOUBLE PRECISION NOT NULL,
+        cost_usd        DOUBLE PRECISION NOT NULL,
+        onchain_ts      DOUBLE PRECISION NOT NULL,
+        detected_ts     DOUBLE PRECISION NOT NULL,
+        created_at      DOUBLE PRECISION NOT NULL,
         FOREIGN KEY (wallet) REFERENCES wallets(address),
         FOREIGN KEY (token_id) REFERENCES markets(token_id)
     );
 
     CREATE TABLE IF NOT EXISTS paper_trades (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        target_trade_id INTEGER NOT NULL, -- links to the target_trade that triggered this
+        id              BIGSERIAL PRIMARY KEY,
+        target_trade_id BIGINT NOT NULL,
         token_id        TEXT NOT NULL,
         side            TEXT NOT NULL,
-        size            REAL NOT NULL,    -- shares filled
-        avg_price       REAL NOT NULL,
-        cost_usd        REAL NOT NULL,
-        slippage        REAL NOT NULL,    -- price slippage vs target
-        orderbook_latency_ms REAL,
-        detection_delay_ms   REAL,
-        execution_delay_ms   REAL,
-        total_delay_ms       REAL,
-        no_fill_reason  TEXT,            -- NULL if filled; reason string if not
-        created_at      REAL NOT NULL,
+        size            DOUBLE PRECISION NOT NULL,
+        avg_price       DOUBLE PRECISION NOT NULL,
+        cost_usd        DOUBLE PRECISION NOT NULL,
+        slippage        DOUBLE PRECISION NOT NULL,
+        orderbook_latency_ms DOUBLE PRECISION,
+        detection_delay_ms   DOUBLE PRECISION,
+        execution_delay_ms   DOUBLE PRECISION,
+        total_delay_ms       DOUBLE PRECISION,
+        no_fill_reason  TEXT,
+        requested_size DOUBLE PRECISION,
+        source_position_fraction DOUBLE PRECISION,
+        source_wallet_position_before DOUBLE PRECISION,
+        position_mismatch_reason TEXT,
+        created_at      DOUBLE PRECISION NOT NULL,
         FOREIGN KEY (target_trade_id) REFERENCES target_trades(id),
         FOREIGN KEY (token_id) REFERENCES markets(token_id)
     );
 
     CREATE TABLE IF NOT EXISTS orderbook_snapshots (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        target_trade_id INTEGER NOT NULL,
+        id              BIGSERIAL PRIMARY KEY,
+        target_trade_id BIGINT NOT NULL,
         token_id        TEXT NOT NULL,
-        side            TEXT NOT NULL,   -- 'BUY' or 'SELL'
-        bids_json       TEXT NOT NULL,   -- full bids list as JSON
-        asks_json       TEXT NOT NULL,   -- full asks list as JSON
-        best_bid        REAL,            -- top-of-book bid price (NULL if empty)
-        best_ask        REAL,            -- top-of-book ask price (NULL if empty)
-        total_bid_liquidity_usd REAL,    -- sum(price*size) across all bids
-        total_ask_liquidity_usd REAL,    -- sum(price*size) across all asks
-        captured_at     REAL NOT NULL,   -- epoch when snapshot was taken
+        side            TEXT NOT NULL,
+        bids_json       TEXT NOT NULL,
+        asks_json       TEXT NOT NULL,
+        best_bid        DOUBLE PRECISION,
+        best_ask        DOUBLE PRECISION,
+        total_bid_liquidity_usd DOUBLE PRECISION,
+        total_ask_liquidity_usd DOUBLE PRECISION,
+        captured_at     DOUBLE PRECISION NOT NULL,
         FOREIGN KEY (target_trade_id) REFERENCES target_trades(id)
     );
 
     CREATE TABLE IF NOT EXISTS positions (
         token_id        TEXT PRIMARY KEY,
-        size            REAL DEFAULT 0,
-        cost_basis      REAL DEFAULT 0,
-        realized_pnl    REAL DEFAULT 0,
-        updated_at      REAL,
+        size            DOUBLE PRECISION DEFAULT 0,
+        cost_basis      DOUBLE PRECISION DEFAULT 0,
+        realized_pnl    DOUBLE PRECISION DEFAULT 0,
+        updated_at      DOUBLE PRECISION,
         FOREIGN KEY (token_id) REFERENCES markets(token_id)
     );
 
     CREATE TABLE IF NOT EXISTS wallet_positions (
         wallet          TEXT NOT NULL,
         token_id        TEXT NOT NULL,
-        size            REAL DEFAULT 0,
-        cost_basis      REAL DEFAULT 0,
-        realized_pnl    REAL DEFAULT 0,
-        updated_at      REAL,
+        size            DOUBLE PRECISION DEFAULT 0,
+        cost_basis      DOUBLE PRECISION DEFAULT 0,
+        realized_pnl    DOUBLE PRECISION DEFAULT 0,
+        updated_at      DOUBLE PRECISION,
         PRIMARY KEY (wallet, token_id),
         FOREIGN KEY (wallet) REFERENCES wallets(address),
         FOREIGN KEY (token_id) REFERENCES markets(token_id)
@@ -267,125 +306,66 @@ def init_db(db_path: Optional[str] = None) -> None:
     """)
 
     conn.commit()
-
-    # ── Safe migrations for existing databases ────────────────────
-    # Add columns / tables introduced after initial release.
     _migrate(conn)
-
     conn.close()
 
 
-def _migrate(conn: sqlite3.Connection) -> None:
+def _migrate(conn: ManagedConnection) -> None:
     """Apply incremental schema changes without destroying existing data."""
-    paper_cols = {
-        row[1]
-        for row in conn.execute("PRAGMA table_info(paper_trades)").fetchall()
-    }
-    if "no_fill_reason" not in paper_cols:
-        conn.execute("ALTER TABLE paper_trades ADD COLUMN no_fill_reason TEXT")
-        conn.commit()
-    if "requested_size" not in paper_cols:
-        conn.execute("ALTER TABLE paper_trades ADD COLUMN requested_size REAL")
-        conn.commit()
-    if "source_position_fraction" not in paper_cols:
-        conn.execute("ALTER TABLE paper_trades ADD COLUMN source_position_fraction REAL")
-        conn.commit()
-    if "source_wallet_position_before" not in paper_cols:
-        conn.execute("ALTER TABLE paper_trades ADD COLUMN source_wallet_position_before REAL")
-        conn.commit()
-    if "position_mismatch_reason" not in paper_cols:
-        conn.execute("ALTER TABLE paper_trades ADD COLUMN position_mismatch_reason TEXT")
-        conn.commit()
+    conn.executescript("""
+    ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS no_fill_reason TEXT;
+    ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS requested_size DOUBLE PRECISION;
+    ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS source_position_fraction DOUBLE PRECISION;
+    ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS source_wallet_position_before DOUBLE PRECISION;
+    ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS position_mismatch_reason TEXT;
 
-    market_cols = {
-        row[1]
-        for row in conn.execute("PRAGMA table_info(markets)").fetchall()
-    }
-    if "category" not in market_cols:
-        conn.execute("ALTER TABLE markets ADD COLUMN category TEXT")
-        conn.commit()
-    if "tags" not in market_cols:
-        conn.execute("ALTER TABLE markets ADD COLUMN tags TEXT")
-        conn.commit()
-    if "last_resolution_check" not in market_cols:
-        conn.execute("ALTER TABLE markets ADD COLUMN last_resolution_check REAL")
-        conn.commit()
-    if "next_resolution_check" not in market_cols:
-        conn.execute("ALTER TABLE markets ADD COLUMN next_resolution_check REAL")
-        conn.commit()
-    if "resolution_check_failures" not in market_cols:
-        conn.execute("ALTER TABLE markets ADD COLUMN resolution_check_failures INTEGER DEFAULT 0")
-        conn.commit()
-    if "group_item_title" not in market_cols:
-        conn.execute("ALTER TABLE markets ADD COLUMN group_item_title TEXT")
-        conn.commit()
+    ALTER TABLE markets ADD COLUMN IF NOT EXISTS category TEXT;
+    ALTER TABLE markets ADD COLUMN IF NOT EXISTS tags TEXT;
+    ALTER TABLE markets ADD COLUMN IF NOT EXISTS last_resolution_check DOUBLE PRECISION;
+    ALTER TABLE markets ADD COLUMN IF NOT EXISTS next_resolution_check DOUBLE PRECISION;
+    ALTER TABLE markets ADD COLUMN IF NOT EXISTS resolution_check_failures INTEGER DEFAULT 0;
+    ALTER TABLE markets ADD COLUMN IF NOT EXISTS group_item_title TEXT;
 
-    wallet_cols = {
-        row[1]
-        for row in conn.execute("PRAGMA table_info(wallets)").fetchall()
-    }
-    if "tracking_enabled" not in wallet_cols:
-        conn.execute("ALTER TABLE wallets ADD COLUMN tracking_enabled INTEGER DEFAULT 1")
-        conn.commit()
-    if "enabled_at" not in wallet_cols:
-        conn.execute("ALTER TABLE wallets ADD COLUMN enabled_at REAL")
-        conn.commit()
-    if "disabled_at" not in wallet_cols:
-        conn.execute("ALTER TABLE wallets ADD COLUMN disabled_at REAL")
-        conn.commit()
+    ALTER TABLE wallets ADD COLUMN IF NOT EXISTS tracking_enabled INTEGER DEFAULT 1;
+    ALTER TABLE wallets ADD COLUMN IF NOT EXISTS enabled_at DOUBLE PRECISION;
+    ALTER TABLE wallets ADD COLUMN IF NOT EXISTS disabled_at DOUBLE PRECISION;
+
+    CREATE TABLE IF NOT EXISTS orderbook_snapshots (
+        id              BIGSERIAL PRIMARY KEY,
+        target_trade_id BIGINT NOT NULL,
+        token_id        TEXT NOT NULL,
+        side            TEXT NOT NULL,
+        bids_json       TEXT NOT NULL,
+        asks_json       TEXT NOT NULL,
+        best_bid        DOUBLE PRECISION,
+        best_ask        DOUBLE PRECISION,
+        total_bid_liquidity_usd DOUBLE PRECISION,
+        total_ask_liquidity_usd DOUBLE PRECISION,
+        captured_at     DOUBLE PRECISION NOT NULL,
+        FOREIGN KEY (target_trade_id) REFERENCES target_trades(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS wallet_positions (
+        wallet          TEXT NOT NULL,
+        token_id        TEXT NOT NULL,
+        size            DOUBLE PRECISION DEFAULT 0,
+        cost_basis      DOUBLE PRECISION DEFAULT 0,
+        realized_pnl    DOUBLE PRECISION DEFAULT 0,
+        updated_at      DOUBLE PRECISION,
+        PRIMARY KEY (wallet, token_id),
+        FOREIGN KEY (wallet) REFERENCES wallets(address),
+        FOREIGN KEY (token_id) REFERENCES markets(token_id)
+    );
+    """)
 
     conn.execute(
         """
         UPDATE wallets
-        SET enabled_at = COALESCE(enabled_at, added_at, ?)
+        SET enabled_at = COALESCE(enabled_at, added_at, %s)
         WHERE tracking_enabled = 1 AND enabled_at IS NULL
         """,
         (time.time(),),
     )
-    conn.commit()
-
-    existing_tables = {
-        row[0]
-        for row in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-    }
-    if "orderbook_snapshots" not in existing_tables:
-        conn.executescript("""
-        CREATE TABLE orderbook_snapshots (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            target_trade_id INTEGER NOT NULL,
-            token_id        TEXT NOT NULL,
-            side            TEXT NOT NULL,
-            bids_json       TEXT NOT NULL,
-            asks_json       TEXT NOT NULL,
-            best_bid        REAL,
-            best_ask        REAL,
-            total_bid_liquidity_usd REAL,
-            total_ask_liquidity_usd REAL,
-            captured_at     REAL NOT NULL,
-            FOREIGN KEY (target_trade_id) REFERENCES target_trades(id)
-        );
-        CREATE INDEX IF NOT EXISTS idx_ob_target ON orderbook_snapshots(target_trade_id);
-        CREATE INDEX IF NOT EXISTS idx_ob_token  ON orderbook_snapshots(token_id);
-        """)
-        conn.commit()
-
-    if "wallet_positions" not in existing_tables:
-        conn.executescript("""
-        CREATE TABLE wallet_positions (
-            wallet          TEXT NOT NULL,
-            token_id        TEXT NOT NULL,
-            size            REAL DEFAULT 0,
-            cost_basis      REAL DEFAULT 0,
-            realized_pnl    REAL DEFAULT 0,
-            updated_at      REAL,
-            PRIMARY KEY (wallet, token_id),
-            FOREIGN KEY (wallet) REFERENCES wallets(address),
-            FOREIGN KEY (token_id) REFERENCES markets(token_id)
-        );
-        """)
-        conn.commit()
 
     if "live_trades" not in existing_tables:
         conn.executescript("""
@@ -476,7 +456,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _backfill_wallet_positions(conn: sqlite3.Connection) -> None:
+def _backfill_wallet_positions(conn: ManagedConnection) -> None:
     """Populate wallet_positions and recompute aggregate positions when missing."""
     wallet_position_count = conn.execute(
         "SELECT COUNT(*) AS c FROM wallet_positions"
@@ -527,7 +507,7 @@ def _backfill_wallet_positions(conn: sqlite3.Connection) -> None:
     _recompute_all_aggregate_positions(conn)
 
 
-def _recompute_all_aggregate_positions(conn: sqlite3.Connection) -> None:
+def _recompute_all_aggregate_positions(conn: ManagedConnection) -> None:
     token_ids = [
         row["token_id"]
         for row in conn.execute("SELECT DISTINCT token_id FROM wallet_positions").fetchall()
@@ -538,48 +518,47 @@ def _recompute_all_aggregate_positions(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-
 # ── Wallet helpers ────────────────────────────────────────────────
 
-def upsert_wallet(conn: sqlite3.Connection, address: str, alias: str = "",
+def upsert_wallet(conn: ManagedConnection, address: str, alias: str = "",
                   source: str = "manual", pnl: float = 0, vol: float = 0) -> None:
     now = time.time()
     conn.execute("""
         INSERT INTO wallets (address, alias, source, leaderboard_pnl, leaderboard_vol, added_at, tracking_enabled, enabled_at)
-        VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, 1, %s)
         ON CONFLICT(address) DO UPDATE SET
-            alias = CASE WHEN excluded.alias != '' THEN excluded.alias ELSE wallets.alias END,
-            source = excluded.source,
-            leaderboard_pnl = excluded.leaderboard_pnl,
-            leaderboard_vol = excluded.leaderboard_vol
+            alias = CASE WHEN EXCLUDED.alias != '' THEN EXCLUDED.alias ELSE wallets.alias END,
+            source = EXCLUDED.source,
+            leaderboard_pnl = EXCLUDED.leaderboard_pnl,
+            leaderboard_vol = EXCLUDED.leaderboard_vol
     """, (address.lower(), alias, source, pnl, vol, now, now))
     conn.execute(
         """
         UPDATE wallets
-        SET enabled_at = COALESCE(enabled_at, ?)
-        WHERE address = ? AND tracking_enabled = 1
+        SET enabled_at = COALESCE(enabled_at, %s)
+        WHERE address = %s AND tracking_enabled = 1
         """,
         (now, address.lower()),
     )
     conn.commit()
 
 
-def set_wallet_tracking(conn: sqlite3.Connection, address: str, enabled: bool) -> None:
+def set_wallet_tracking(conn: ManagedConnection, address: str, enabled: bool) -> None:
     now = time.time()
     conn.execute(
         """
         UPDATE wallets
-        SET tracking_enabled = ?,
-            enabled_at = CASE WHEN ? = 1 THEN COALESCE(enabled_at, ?) ELSE enabled_at END,
-            disabled_at = CASE WHEN ? = 0 THEN ? ELSE NULL END
-        WHERE address = ?
+        SET tracking_enabled = %s,
+            enabled_at = CASE WHEN %s = 1 THEN COALESCE(enabled_at, %s) ELSE enabled_at END,
+            disabled_at = CASE WHEN %s = 0 THEN %s ELSE NULL END
+        WHERE address = %s
         """,
         (1 if enabled else 0, 1 if enabled else 0, now, 1 if enabled else 0, now, address.lower()),
     )
     conn.commit()
 
 
-def get_enabled_wallets(conn: sqlite3.Connection) -> list[str]:
+def get_enabled_wallets(conn: ManagedConnection) -> list[str]:
     rows = conn.execute(
         "SELECT address FROM wallets WHERE tracking_enabled = 1 ORDER BY COALESCE(enabled_at, added_at) ASC"
     ).fetchall()
@@ -588,62 +567,63 @@ def get_enabled_wallets(conn: sqlite3.Connection) -> list[str]:
 
 # ── Market helpers ────────────────────────────────────────────────
 
-def upsert_market(conn: sqlite3.Connection, token_id: str,
+def upsert_market(conn: ManagedConnection, token_id: str,
                   question: str = "", outcomes: str = "[]",
                   outcome_idx: int = 0, condition_id: str = "",
                   slug: str = "", category: str = "",
                   group_item_title: str = "", tags: str = "[]") -> None:
     conn.execute("""
         INSERT INTO markets (token_id, condition_id, question, outcomes, outcome_idx, slug, category, group_item_title, tags, first_seen)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT(token_id) DO UPDATE SET
-            question = CASE 
-                WHEN excluded.question = 'Unknown / Pending Metadata' AND markets.question != '' AND markets.question IS NOT NULL 
-                THEN markets.question 
-                ELSE COALESCE(NULLIF(excluded.question, ''), markets.question)
+            question = CASE
+                WHEN EXCLUDED.question = 'Unknown / Pending Metadata' AND markets.question != '' AND markets.question IS NOT NULL
+                THEN markets.question
+                ELSE COALESCE(NULLIF(EXCLUDED.question, ''), markets.question)
             END,
-            outcomes = COALESCE(NULLIF(excluded.outcomes, '[]'), markets.outcomes),
-            outcome_idx = excluded.outcome_idx,
-            condition_id = COALESCE(NULLIF(excluded.condition_id, ''), markets.condition_id),
-            category = COALESCE(NULLIF(excluded.category, ''), markets.category),
-            group_item_title = COALESCE(NULLIF(excluded.group_item_title, ''), markets.group_item_title),
-            tags = COALESCE(NULLIF(excluded.tags, '[]'), markets.tags)
+            outcomes = COALESCE(NULLIF(EXCLUDED.outcomes, '[]'), markets.outcomes),
+            outcome_idx = EXCLUDED.outcome_idx,
+            condition_id = COALESCE(NULLIF(EXCLUDED.condition_id, ''), markets.condition_id),
+            category = COALESCE(NULLIF(EXCLUDED.category, ''), markets.category),
+            group_item_title = COALESCE(NULLIF(EXCLUDED.group_item_title, ''), markets.group_item_title),
+            tags = COALESCE(NULLIF(EXCLUDED.tags, '[]'), markets.tags)
     """, (token_id, condition_id, question, outcomes, outcome_idx, slug, category, group_item_title, tags, time.time()))
     conn.commit()
 
 
-def mark_resolved(conn: sqlite3.Connection, token_id: str,
+def mark_resolved(conn: ManagedConnection, token_id: str,
                   winning_outcome: int, payout_value: float) -> None:
     conn.execute("""
         UPDATE markets
         SET resolved = 1,
-            winning_outcome = ?,
-            payout_value = ?,
-            resolved_at = ?,
+            winning_outcome = %s,
+            payout_value = %s,
+            resolved_at = %s,
             last_resolution_check = NULL,
             next_resolution_check = NULL,
             resolution_check_failures = 0
-        WHERE token_id = ?
+        WHERE token_id = %s
     """, (winning_outcome, payout_value, time.time(), token_id))
     conn.commit()
 
 
 # ── Trade insert helpers ──────────────────────────────────────────
 
-def insert_target_trade(conn: sqlite3.Connection, wallet: str, token_id: str,
+def insert_target_trade(conn: ManagedConnection, wallet: str, token_id: str,
                         tx_hash: str, block_number: int, side: str,
                         size: float, price: float, cost_usd: float,
                         onchain_ts: float, detected_ts: float) -> int:
     cur = conn.execute("""
         INSERT INTO target_trades (wallet, token_id, tx_hash, block_number, side, size, price, cost_usd, onchain_ts, detected_ts, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
     """, (wallet.lower(), token_id, tx_hash, block_number, side, size, price,
           cost_usd, onchain_ts, detected_ts, time.time()))
     conn.commit()
-    return cur.lastrowid
+    return cur.fetchone()["id"]
 
 
-def insert_paper_trade(conn: sqlite3.Connection, target_trade_id: int,
+def insert_paper_trade(conn: ManagedConnection, target_trade_id: int,
                        token_id: str, side: str, size: float, avg_price: float,
                        cost_usd: float, slippage: float,
                        orderbook_latency_ms: float, detection_delay_ms: float,
@@ -659,19 +639,21 @@ def insert_paper_trade(conn: sqlite3.Connection, target_trade_id: int,
              orderbook_latency_ms, detection_delay_ms, execution_delay_ms, total_delay_ms,
              no_fill_reason, requested_size, source_position_fraction,
              source_wallet_position_before, position_mismatch_reason, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
     """, (target_trade_id, token_id, side, size, avg_price, cost_usd, slippage,
           orderbook_latency_ms, detection_delay_ms, execution_delay_ms,
           total_delay_ms, no_fill_reason, requested_size, source_position_fraction,
           source_wallet_position_before, position_mismatch_reason, time.time()))
     conn.commit()
-    return cur.lastrowid
+    return cur.fetchone()["id"]
 
 
-def insert_orderbook_snapshot(conn: sqlite3.Connection, target_trade_id: int,
+def insert_orderbook_snapshot(conn: ManagedConnection, target_trade_id: int,
                               token_id: str, side: str,
                               bids: list, asks: list) -> int:
     """Persist the full order book snapshot for a triggered trade."""
+
     def _best(levels: list, reverse: bool) -> Optional[float]:
         if not levels:
             return None
@@ -685,7 +667,8 @@ def insert_orderbook_snapshot(conn: sqlite3.Connection, target_trade_id: int,
             (target_trade_id, token_id, side, bids_json, asks_json,
              best_bid, best_ask,
              total_bid_liquidity_usd, total_ask_liquidity_usd, captured_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
     """, (
         target_trade_id, token_id, side,
         json.dumps(bids), json.dumps(asks),
@@ -696,35 +679,35 @@ def insert_orderbook_snapshot(conn: sqlite3.Connection, target_trade_id: int,
         time.time(),
     ))
     conn.commit()
-    return cur.lastrowid
+    return cur.fetchone()["id"]
 
 
 # ── Position helpers ──────────────────────────────────────────────
 
-def get_position(conn: sqlite3.Connection, token_id: str) -> dict:
-    row = conn.execute("SELECT * FROM positions WHERE token_id = ?", (token_id,)).fetchone()
+def get_position(conn: ManagedConnection, token_id: str) -> dict:
+    row = conn.execute("SELECT * FROM positions WHERE token_id = %s", (token_id,)).fetchone()
     if row:
         return dict(row)
     return {"token_id": token_id, "size": 0.0, "cost_basis": 0.0, "realized_pnl": 0.0}
 
 
-def upsert_position(conn: sqlite3.Connection, token_id: str,
-                     size: float, cost_basis: float, realized_pnl: float) -> None:
+def upsert_position(conn: ManagedConnection, token_id: str,
+                    size: float, cost_basis: float, realized_pnl: float) -> None:
     conn.execute("""
         INSERT INTO positions (token_id, size, cost_basis, realized_pnl, updated_at)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s)
         ON CONFLICT(token_id) DO UPDATE SET
-            size = excluded.size,
-            cost_basis = excluded.cost_basis,
-            realized_pnl = excluded.realized_pnl,
-            updated_at = excluded.updated_at
+            size = EXCLUDED.size,
+            cost_basis = EXCLUDED.cost_basis,
+            realized_pnl = EXCLUDED.realized_pnl,
+            updated_at = EXCLUDED.updated_at
     """, (token_id, size, cost_basis, realized_pnl, time.time()))
     conn.commit()
 
 
-def get_wallet_position(conn: sqlite3.Connection, wallet: str, token_id: str) -> dict:
+def get_wallet_position(conn: ManagedConnection, wallet: str, token_id: str) -> dict:
     row = conn.execute(
-        "SELECT * FROM wallet_positions WHERE wallet = ? AND token_id = ?",
+        "SELECT * FROM wallet_positions WHERE wallet = %s AND token_id = %s",
         (wallet.lower(), token_id),
     ).fetchone()
     if row:
@@ -738,28 +721,28 @@ def get_wallet_position(conn: sqlite3.Connection, wallet: str, token_id: str) ->
     }
 
 
-def upsert_wallet_position(conn: sqlite3.Connection, wallet: str, token_id: str,
+def upsert_wallet_position(conn: ManagedConnection, wallet: str, token_id: str,
                            size: float, cost_basis: float, realized_pnl: float) -> None:
     conn.execute("""
         INSERT INTO wallet_positions (wallet, token_id, size, cost_basis, realized_pnl, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT(wallet, token_id) DO UPDATE SET
-            size = excluded.size,
-            cost_basis = excluded.cost_basis,
-            realized_pnl = excluded.realized_pnl,
-            updated_at = excluded.updated_at
+            size = EXCLUDED.size,
+            cost_basis = EXCLUDED.cost_basis,
+            realized_pnl = EXCLUDED.realized_pnl,
+            updated_at = EXCLUDED.updated_at
     """, (wallet.lower(), token_id, size, cost_basis, realized_pnl, time.time()))
     conn.commit()
 
 
-def recompute_aggregate_position(conn: sqlite3.Connection, token_id: str) -> None:
+def recompute_aggregate_position(conn: ManagedConnection, token_id: str) -> None:
     row = conn.execute(
         """
         SELECT COALESCE(SUM(size), 0) AS size,
                COALESCE(SUM(cost_basis), 0) AS cost_basis,
                COALESCE(SUM(realized_pnl), 0) AS realized_pnl
         FROM wallet_positions
-        WHERE token_id = ?
+        WHERE token_id = %s
         """,
         (token_id,),
     ).fetchone()
@@ -772,7 +755,7 @@ def recompute_aggregate_position(conn: sqlite3.Connection, token_id: str) -> Non
     )
 
 
-def get_target_wallet_open_size_before_trade(conn: sqlite3.Connection, wallet: str,
+def get_target_wallet_open_size_before_trade(conn: ManagedConnection, wallet: str,
                                              token_id: str, target_trade_id: int) -> float:
     row = conn.execute(
         """
@@ -784,16 +767,16 @@ def get_target_wallet_open_size_before_trade(conn: sqlite3.Connection, wallet: s
             END
         ), 0) AS open_size
         FROM target_trades
-        WHERE wallet = ? AND token_id = ? AND id < ?
+        WHERE wallet = %s AND token_id = %s AND id < %s
         """,
         (wallet.lower(), token_id, target_trade_id),
     ).fetchone()
     return max(0.0, float(row["open_size"] or 0.0))
 
 
-def settle_wallet_positions_for_token(conn: sqlite3.Connection, token_id: str, payout_value: float) -> None:
+def settle_wallet_positions_for_token(conn: ManagedConnection, token_id: str, payout_value: float) -> None:
     rows = conn.execute(
-        "SELECT * FROM wallet_positions WHERE token_id = ? AND size > 0.0001",
+        "SELECT * FROM wallet_positions WHERE token_id = %s AND size > 0.0001",
         (token_id,),
     ).fetchall()
     if not rows:
@@ -884,15 +867,15 @@ def upsert_live_wallet_position(conn: sqlite3.Connection, source_wallet: str, to
 
 # ── Run state helpers (for restartability) ────────────────────────
 
-def get_state(conn: sqlite3.Connection, key: str) -> Optional[str]:
-    row = conn.execute("SELECT value FROM run_state WHERE key = ?", (key,)).fetchone()
+def get_state(conn: ManagedConnection, key: str) -> Optional[str]:
+    row = conn.execute("SELECT value FROM run_state WHERE key = %s", (key,)).fetchone()
     return row["value"] if row else None
 
 
-def set_state(conn: sqlite3.Connection, key: str, value: str) -> None:
+def set_state(conn: ManagedConnection, key: str, value: str) -> None:
     conn.execute("""
-        INSERT INTO run_state (key, value) VALUES (?, ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        INSERT INTO run_state (key, value) VALUES (%s, %s)
+        ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value
     """, (key, value))
     conn.commit()
 

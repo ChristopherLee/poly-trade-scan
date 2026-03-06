@@ -118,7 +118,7 @@ class ResolutionWorker:
             ).fetchall()
         return [row["token_id"] for row in rows if row["token_id"]]
 
-    def process_resolution(self, conn: db.sqlite3.Connection, market_meta: dict) -> None:
+    def process_resolution(self, conn, market_meta: dict) -> None:
         """Processes resolution for a market given its metadata."""
         cid = market_meta.get("condition_id")
         clob_ids = market_meta.get("clob_token_ids") or []
