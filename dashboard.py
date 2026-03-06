@@ -929,6 +929,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self._api_latency_stats(conn)
             elif path == "/api/leaderboard":
                 self._api_leaderboard(params)
+            elif path == "/api/live_trades":
+                self._api_live_trades(conn, params)
+            elif path == "/api/live_pnl_over_time":
+                self._api_live_pnl_over_time(conn)
             else:
                 self._json_response({"error": "not found"}, 404)
         finally:
@@ -979,7 +983,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         })
 
     def _api_wallets(self, conn):
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             WITH trade_rollup AS (
                 SELECT
                     tt.wallet,
@@ -989,7 +994,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 LEFT JOIN paper_trades pt ON pt.target_trade_id = tt.id
                 GROUP BY tt.wallet
             ),
-            latest_prices AS (
+            latest_token_prices AS (
                 SELECT pt.token_id, pt.avg_price AS last_price
                 FROM paper_trades pt
                 JOIN (
@@ -1004,31 +1009,46 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 SELECT
                     wp.wallet,
                     COALESCE(SUM(wp.realized_pnl), 0) AS realized_pnl,
+                    COALESCE(SUM(CASE WHEN wp.size > 0.0001 THEN wp.cost_basis ELSE 0 END), 0) AS open_exposure,
                     COALESCE(SUM(
                         CASE
                             WHEN wp.size <= 0.0001 THEN 0
                             WHEN COALESCE(m.resolved, 0) = 1 THEN
                                 (COALESCE(m.payout_value, 0) * wp.size) - wp.cost_basis
                             ELSE
-                                ((COALESCE(lp.last_price, wp.cost_basis / NULLIF(wp.size, 0))) * wp.size) - wp.cost_basis
+                                (COALESCE(latest_token_prices.last_price, wp.cost_basis / NULLIF(wp.size, 0)) * wp.size) - wp.cost_basis
                         END
                     ), 0) AS unrealized_pnl
                 FROM wallet_positions wp
                 LEFT JOIN markets m ON m.token_id = wp.token_id
-                LEFT JOIN latest_prices lp ON lp.token_id = wp.token_id
+                LEFT JOIN latest_token_prices ON latest_token_prices.token_id = wp.token_id
                 GROUP BY wp.wallet
             )
             SELECT
-                   w.*,
-                   COALESCE(tr.trade_count, 0) AS trade_count,
-                   COALESCE(tr.paper_volume, 0) AS paper_volume,
-                   ROUND(COALESCE(wpr.realized_pnl, 0), 2) AS realized_pnl,
-                   ROUND(COALESCE(wpr.realized_pnl, 0) + COALESCE(wpr.unrealized_pnl, 0), 2) AS wallet_total_pnl
+                w.address,
+                w.alias,
+                w.source,
+                w.leaderboard_pnl,
+                w.leaderboard_vol,
+                w.added_at,
+                w.tracking_enabled,
+                w.enabled_at,
+                w.disabled_at,
+                COALESCE(trade_rollup.trade_count, 0) AS trade_count,
+                ROUND(COALESCE(trade_rollup.paper_volume, 0), 2) AS paper_volume,
+                ROUND(COALESCE(wallet_position_rollup.realized_pnl, 0), 2) AS realized_pnl,
+                ROUND(COALESCE(wallet_position_rollup.open_exposure, 0), 2) AS open_exposure,
+                ROUND(
+                    COALESCE(wallet_position_rollup.realized_pnl, 0)
+                    + COALESCE(wallet_position_rollup.unrealized_pnl, 0),
+                    2
+                ) AS wallet_total_pnl
             FROM wallets w
-            LEFT JOIN trade_rollup tr ON tr.wallet = w.address
-            LEFT JOIN wallet_position_rollup wpr ON wpr.wallet = w.address
+            LEFT JOIN trade_rollup ON trade_rollup.wallet = w.address
+            LEFT JOIN wallet_position_rollup ON wallet_position_rollup.wallet = w.address
             ORDER BY w.tracking_enabled DESC, COALESCE(w.enabled_at, w.added_at) DESC, w.leaderboard_pnl DESC
-        """).fetchall()
+            """
+        ).fetchall()
         self._json_response([dict(row) for row in rows])
 
     def _api_add_wallet(self, conn, payload):
@@ -1354,6 +1374,43 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """).fetchall()
         self._json_response([dict(r) for r in rows])
 
+
+    def _api_live_trades(self, conn, params):
+        limit = min(max(int(params.get("limit", [100])[0]), 1), 500)
+        rows = conn.execute("""
+            SELECT lt.*, m.question, m.category
+            FROM live_trades lt
+            LEFT JOIN markets m ON m.token_id = lt.token_id
+            ORDER BY lt.created_at DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+
+        payload = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item["risk_flags"] = json.loads(item.get("risk_flags") or "[]")
+            except Exception:
+                item["risk_flags"] = []
+            payload.append(item)
+        self._json_response(payload)
+
+    def _api_live_pnl_over_time(self, conn):
+        rows = conn.execute("""
+            SELECT created_at, status, notional_usd
+            FROM live_trades
+            ORDER BY created_at ASC
+        """).fetchall()
+
+        cumulative = 0.0
+        points = []
+        for row in rows:
+            status = (row["status"] or "").upper()
+            if status == "FILLED":
+                cumulative -= float(row["notional_usd"] or 0.0)
+            points.append({"ts": row["created_at"], "cash_delta_cumulative": round(cumulative, 2)})
+
+        self._json_response(points)
     def _api_leaderboard(self, params):
         category = (params.get("category", ["overall"])[0] or "overall").lower()
         time_period = (params.get("time_period", ["MONTH"])[0] or "MONTH").upper()

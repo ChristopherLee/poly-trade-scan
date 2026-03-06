@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getWalletTrades } from "@/lib/dashboard-api";
+import { getWalletTrades } from "@/dashboard-lib/dashboard-api";
 
 export async function GET(request: NextRequest) {
   const wallet = request.nextUrl.searchParams.get("wallet")?.trim().toLowerCase();

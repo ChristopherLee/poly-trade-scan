@@ -7,6 +7,7 @@ let latencyChart = null;
 let categoryPnlChart = null;
 let walletPnlChart = null;
 let walletRealizedChart = null;
+let livePnlChart = null;
 let walletTradesGrid = null;
 let walletTradesGridWallet = null;
 let walletRealizedMode = '15m';
@@ -312,6 +313,11 @@ async function refreshAll() {
 
     if (activeWalletDetail) {
         await openWalletDetail(activeWalletDetail, { preserveOpen: true });
+    }
+
+    const liveTab = document.getElementById('tab-live');
+    if (liveTab && liveTab.classList.contains('active')) {
+        await loadLiveTrading();
     }
 }
 
@@ -1621,11 +1627,63 @@ async function loadCategoryPnLChart() {
 }
 
 // â”€â”€ Tab switching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function loadLiveTrading() {
+    const [trades, points] = await Promise.all([
+        api('/api/live_trades?limit=150'),
+        api('/api/live_pnl_over_time'),
+    ]);
+
+    const tbody = document.getElementById('live-trades-tbody');
+    if (tbody) {
+        if (!trades || !trades.length) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">No live trades yet.</td></tr>';
+        } else {
+            tbody.innerHTML = trades.map((t) => `
+                <tr>
+                    <td>${fmtTime(t.created_at)}</td>
+                    <td>${escapeHtml(t.status || '-')}</td>
+                    <td>${escapeHtml(t.question || t.token_id || '-')}</td>
+                    <td class="mono">${fmtAddr(t.source_wallet || '')}</td>
+                    <td>${escapeHtml(t.side || '-')}</td>
+                    <td>${fmt$(Number(t.requested_size || 0))}</td>
+                    <td>${Number(t.filled_size || 0).toFixed(2)}</td>
+                    <td>${Number(t.avg_price || 0).toFixed(4)}</td>
+                    <td>${escapeHtml((t.risk_flags || []).join(', ') || '-')}</td>
+                    <td class="mono">${escapeHtml(t.audit_ref || '-')}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    const ctx = document.getElementById('live-pnl-chart');
+    if (!ctx || !points) return;
+    const labels = points.map((p) => new Date((p.ts || 0) * 1000).toLocaleTimeString());
+    const values = points.map((p) => Number(p.cash_delta_cumulative || 0));
+
+    if (livePnlChart) livePnlChart.destroy();
+    livePnlChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Cumulative Cash Delta (USD)',
+                data: values,
+                borderColor: '#7c3aed',
+                backgroundColor: 'rgba(124,58,237,0.2)',
+                fill: true,
+                tension: 0.2,
+            }],
+        },
+        options: { responsive: true, maintainAspectRatio: true },
+    });
+}
+
 function switchTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${name}`));
     if (name === 'charts') loadCharts();
     if (name === 'positions') loadPositions();
+    if (name === 'live') loadLiveTrading();
 }
 async function openOrderBook(targetId) {
     const data = await api(`/api/orderbook?target_trade_id=${targetId}`);

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { getTrackedWallets } from "@/dashboard-lib/dashboard-api";
+import { getLivePnlOverTime } from "@/dashboard-lib/dashboard-api";
 
 export async function GET() {
   try {
-    const wallets = await getTrackedWallets();
-    return NextResponse.json(wallets);
+    const points = await getLivePnlOverTime();
+    return NextResponse.json(points);
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },

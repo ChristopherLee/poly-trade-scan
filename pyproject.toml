@@ -12,6 +12,7 @@ dependencies = [
     "requests",
     "typer",
     "websockets",
+    "py-clob-client",
 ]
 
 [project.scripts]
