@@ -204,12 +204,66 @@ def init_db(db_path: Optional[str] = None) -> None:
         value TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS live_trades (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        token_id        TEXT NOT NULL,
+        source_wallet   TEXT NOT NULL,
+        side            TEXT NOT NULL,
+        requested_size  REAL NOT NULL,
+        filled_size     REAL NOT NULL,
+        avg_price       REAL NOT NULL,
+        notional_usd    REAL NOT NULL,
+        status          TEXT NOT NULL,
+        risk_flags      TEXT,
+        audit_ref       TEXT,
+        tx_hash         TEXT,
+        exchange_order_id TEXT,
+        execution_mode  TEXT,
+        error_message   TEXT,
+        created_at      REAL NOT NULL,
+        FOREIGN KEY (token_id) REFERENCES markets(token_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS live_risk_events (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        severity        TEXT NOT NULL,
+        event_type      TEXT NOT NULL,
+        message         TEXT NOT NULL,
+        details_json    TEXT,
+        created_at      REAL NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS live_source_positions (
+        wallet          TEXT NOT NULL,
+        token_id        TEXT NOT NULL,
+        size            REAL DEFAULT 0,
+        updated_at      REAL,
+        PRIMARY KEY (wallet, token_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS live_wallet_positions (
+        source_wallet   TEXT NOT NULL,
+        token_id        TEXT NOT NULL,
+        size            REAL DEFAULT 0,
+        cost_basis      REAL DEFAULT 0,
+        realized_pnl    REAL DEFAULT 0,
+        updated_at      REAL,
+        PRIMARY KEY (source_wallet, token_id)
+    );
+
     -- Indexes for common queries
     CREATE INDEX IF NOT EXISTS idx_target_wallet    ON target_trades(wallet);
     CREATE INDEX IF NOT EXISTS idx_target_token     ON target_trades(token_id);
     CREATE INDEX IF NOT EXISTS idx_paper_token      ON paper_trades(token_id);
     CREATE INDEX IF NOT EXISTS idx_paper_target     ON paper_trades(target_trade_id);
     CREATE INDEX IF NOT EXISTS idx_market_resolved  ON markets(resolved);
+    CREATE INDEX IF NOT EXISTS idx_live_trades_created_at ON live_trades(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_live_trades_status ON live_trades(status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_live_trades_token ON live_trades(token_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_live_risk_events_created_at ON live_risk_events(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_live_source_positions_wallet ON live_source_positions(wallet, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_live_wallet_positions_wallet ON live_wallet_positions(source_wallet, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_live_wallet_positions_token ON live_wallet_positions(token_id, updated_at DESC);
     """)
 
     conn.commit()
@@ -330,6 +384,88 @@ def _migrate(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (wallet) REFERENCES wallets(address),
             FOREIGN KEY (token_id) REFERENCES markets(token_id)
         );
+        """)
+        conn.commit()
+
+    if "live_trades" not in existing_tables:
+        conn.executescript("""
+        CREATE TABLE live_trades (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            token_id        TEXT NOT NULL,
+            source_wallet   TEXT NOT NULL,
+            side            TEXT NOT NULL,
+            requested_size  REAL NOT NULL,
+            filled_size     REAL NOT NULL,
+            avg_price       REAL NOT NULL,
+            notional_usd    REAL NOT NULL,
+            status          TEXT NOT NULL,
+            risk_flags      TEXT,
+            audit_ref       TEXT,
+            tx_hash         TEXT,
+            exchange_order_id TEXT,
+            execution_mode  TEXT,
+            error_message   TEXT,
+            created_at      REAL NOT NULL,
+            FOREIGN KEY (token_id) REFERENCES markets(token_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_live_trades_created_at ON live_trades(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_live_trades_status ON live_trades(status, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_live_trades_token ON live_trades(token_id, created_at DESC);
+        """)
+        conn.commit()
+
+    live_trades_exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='live_trades'").fetchone() is not None
+    live_trade_cols = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(live_trades)").fetchall()
+    } if live_trades_exists else set()
+    if live_trades_exists and "exchange_order_id" not in live_trade_cols:
+        conn.execute("ALTER TABLE live_trades ADD COLUMN exchange_order_id TEXT")
+        conn.commit()
+    if live_trades_exists and "execution_mode" not in live_trade_cols:
+        conn.execute("ALTER TABLE live_trades ADD COLUMN execution_mode TEXT")
+        conn.commit()
+
+    if "live_source_positions" not in existing_tables:
+        conn.executescript("""
+        CREATE TABLE live_source_positions (
+            wallet          TEXT NOT NULL,
+            token_id        TEXT NOT NULL,
+            size            REAL DEFAULT 0,
+            updated_at      REAL,
+            PRIMARY KEY (wallet, token_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_live_source_positions_wallet ON live_source_positions(wallet, updated_at DESC);
+        """)
+        conn.commit()
+
+    if "live_wallet_positions" not in existing_tables:
+        conn.executescript("""
+        CREATE TABLE live_wallet_positions (
+            source_wallet   TEXT NOT NULL,
+            token_id        TEXT NOT NULL,
+            size            REAL DEFAULT 0,
+            cost_basis      REAL DEFAULT 0,
+            realized_pnl    REAL DEFAULT 0,
+            updated_at      REAL,
+            PRIMARY KEY (source_wallet, token_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_live_wallet_positions_wallet ON live_wallet_positions(source_wallet, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_live_wallet_positions_token ON live_wallet_positions(token_id, updated_at DESC);
+        """)
+        conn.commit()
+
+    if "live_risk_events" not in existing_tables:
+        conn.executescript("""
+        CREATE TABLE live_risk_events (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            severity        TEXT NOT NULL,
+            event_type      TEXT NOT NULL,
+            message         TEXT NOT NULL,
+            details_json    TEXT,
+            created_at      REAL NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_live_risk_events_created_at ON live_risk_events(created_at DESC);
         """)
         conn.commit()
 
@@ -687,6 +823,65 @@ def settle_wallet_positions_for_token(conn: sqlite3.Connection, token_id: str, p
     recompute_aggregate_position(conn, token_id)
 
 
+# ── Live position helpers ─────────────────────────────────────────
+
+def get_live_source_position(conn: sqlite3.Connection, wallet: str, token_id: str) -> dict:
+    row = conn.execute(
+        "SELECT * FROM live_source_positions WHERE wallet = ? AND token_id = ?",
+        (wallet.lower(), token_id),
+    ).fetchone()
+    if row:
+        return dict(row)
+    return {"wallet": wallet.lower(), "token_id": token_id, "size": 0.0}
+
+
+def upsert_live_source_position(conn: sqlite3.Connection, wallet: str, token_id: str, size: float) -> None:
+    conn.execute(
+        """
+        INSERT INTO live_source_positions (wallet, token_id, size, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(wallet, token_id) DO UPDATE SET
+            size = excluded.size,
+            updated_at = excluded.updated_at
+        """,
+        (wallet.lower(), token_id, max(0.0, float(size)), time.time()),
+    )
+    conn.commit()
+
+
+def get_live_wallet_position(conn: sqlite3.Connection, source_wallet: str, token_id: str) -> dict:
+    row = conn.execute(
+        "SELECT * FROM live_wallet_positions WHERE source_wallet = ? AND token_id = ?",
+        (source_wallet.lower(), token_id),
+    ).fetchone()
+    if row:
+        return dict(row)
+    return {
+        "source_wallet": source_wallet.lower(),
+        "token_id": token_id,
+        "size": 0.0,
+        "cost_basis": 0.0,
+        "realized_pnl": 0.0,
+    }
+
+
+def upsert_live_wallet_position(conn: sqlite3.Connection, source_wallet: str, token_id: str,
+                                size: float, cost_basis: float, realized_pnl: float) -> None:
+    conn.execute(
+        """
+        INSERT INTO live_wallet_positions (source_wallet, token_id, size, cost_basis, realized_pnl, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(source_wallet, token_id) DO UPDATE SET
+            size = excluded.size,
+            cost_basis = excluded.cost_basis,
+            realized_pnl = excluded.realized_pnl,
+            updated_at = excluded.updated_at
+        """,
+        (source_wallet.lower(), token_id, max(0.0, float(size)), max(0.0, float(cost_basis)), float(realized_pnl), time.time()),
+    )
+    conn.commit()
+
+
 # ── Run state helpers (for restartability) ────────────────────────
 
 def get_state(conn: sqlite3.Connection, key: str) -> Optional[str]:
@@ -700,3 +895,56 @@ def set_state(conn: sqlite3.Connection, key: str, value: str) -> None:
         ON CONFLICT(key) DO UPDATE SET value = excluded.value
     """, (key, value))
     conn.commit()
+
+
+# ── Live trading audit helpers ───────────────────────────────────
+
+def insert_live_trade(conn: sqlite3.Connection, token_id: str, source_wallet: str,
+                      side: str, requested_size: float, filled_size: float,
+                      avg_price: float, notional_usd: float, status: str,
+                      risk_flags: Optional[list[str]] = None,
+                      audit_ref: Optional[str] = None,
+                      tx_hash: Optional[str] = None,
+                      exchange_order_id: Optional[str] = None,
+                      execution_mode: Optional[str] = None,
+                      error_message: Optional[str] = None) -> int:
+    cur = conn.execute(
+        """
+        INSERT INTO live_trades
+            (token_id, source_wallet, side, requested_size, filled_size, avg_price,
+             notional_usd, status, risk_flags, audit_ref, tx_hash, exchange_order_id, execution_mode, error_message, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            token_id,
+            source_wallet.lower(),
+            side.upper(),
+            requested_size,
+            filled_size,
+            avg_price,
+            notional_usd,
+            status,
+            json.dumps(risk_flags or []),
+            audit_ref,
+            tx_hash,
+            exchange_order_id,
+            execution_mode,
+            error_message,
+            time.time(),
+        ),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def insert_live_risk_event(conn: sqlite3.Connection, severity: str, event_type: str,
+                           message: str, details: Optional[dict] = None) -> int:
+    cur = conn.execute(
+        """
+        INSERT INTO live_risk_events (severity, event_type, message, details_json, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (severity.upper(), event_type, message, json.dumps(details or {}), time.time()),
+    )
+    conn.commit()
+    return cur.lastrowid

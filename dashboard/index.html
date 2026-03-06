@@ -75,6 +75,7 @@
             <button class="tab" data-tab="wallets" onclick="switchTab('wallets')">Leaderboards</button>
             <button class="tab" data-tab="tracked-wallets" onclick="switchTab('tracked-wallets')">Tracked Wallets</button>
             <button class="tab" data-tab="positions" onclick="switchTab('positions')">Positions</button>
+            <button class="tab" data-tab="live" onclick="switchTab('live')">Live Trading</button>
             <button class="tab" data-tab="charts" onclick="switchTab('charts')">Charts</button>
         </nav>
 
@@ -336,6 +337,33 @@
                         </tr>
                     </thead>
                     <tbody id="positions-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+
+        <section class="tab-content" id="tab-live">
+            <div class="card" style="margin-bottom:1rem;">
+                <h3 style="margin-bottom:0.75rem;">Live Trading Cash Usage</h3>
+                <canvas id="live-pnl-chart" height="90"></canvas>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="live-trades-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Market</th>
+                            <th>Source Wallet</th>
+                            <th>Side</th>
+                            <th>Requested USD</th>
+                            <th>Filled Size</th>
+                            <th>Avg Price</th>
+                            <th>Flags</th>
+                            <th>Audit Ref</th>
+                        </tr>
+                    </thead>
+                    <tbody id="live-trades-tbody"></tbody>
                 </table>
             </div>
         </section>
