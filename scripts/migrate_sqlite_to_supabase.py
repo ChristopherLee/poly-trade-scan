@@ -24,6 +24,10 @@ TABLE_ORDER = [
     "positions",
     "wallet_positions",
     "run_state",
+    "live_source_positions",
+    "live_wallet_positions",
+    "live_risk_events",
+    "live_trades",
 ]
 
 
@@ -45,6 +49,45 @@ def pg_columns(conn, table: str) -> list[str]:
     return [row["column_name"] for row in rows]
 
 
+def sync_identity_sequence(conn, table: str) -> None:
+    if "id" not in pg_columns(conn, table):
+        return
+
+    seq_row = conn.execute(
+        "SELECT pg_get_serial_sequence(%s, 'id') AS seq_name",
+        (table,),
+    ).fetchone()
+    seq_name = seq_row["seq_name"] if seq_row else None
+    if not seq_name:
+        return
+
+    max_row = conn.execute(f"SELECT MAX(id) AS max_id FROM {table}").fetchone()
+    max_id = max_row["max_id"] if max_row else None
+    if max_id is None:
+        conn.execute("SELECT setval(%s::regclass, 1, false)", (seq_name,))
+        return
+
+    conn.execute("SELECT setval(%s::regclass, %s, true)", (seq_name, max_id))
+
+
+def copy_table_rows(src: sqlite3.Connection, dest, table: str, cols: list[str], batch_size: int = 1000) -> int:
+    col_list = ", ".join(cols)
+    placeholders = ", ".join(["%s"] * len(cols))
+    insert_sql = f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})"
+
+    total = 0
+    select_cur = src.execute(f"SELECT {col_list} FROM {table}")
+    with dest._inner.cursor() as cur:
+        while True:
+            rows = select_cur.fetchmany(batch_size)
+            if not rows:
+                break
+            values = [tuple(row[col] for col in cols) for row in rows]
+            cur.executemany(insert_sql, values)
+            total += len(values)
+    return total
+
+
 def migrate(sqlite_path: str) -> None:
     print(f"[1/4] Initializing Supabase schema...")
     db.init_db()
@@ -58,7 +101,7 @@ def migrate(sqlite_path: str) -> None:
     with db.transaction(dest):
         print("[3/4] Truncating destination tables...")
         dest.execute(
-            "TRUNCATE TABLE orderbook_snapshots, paper_trades, target_trades, wallet_positions, positions, run_state, markets, wallets RESTART IDENTITY CASCADE"
+            "TRUNCATE TABLE live_trades, live_risk_events, live_wallet_positions, live_source_positions, orderbook_snapshots, paper_trades, target_trades, wallet_positions, positions, run_state, markets, wallets RESTART IDENTITY CASCADE"
         )
 
         print("[4/4] Copying rows...")
@@ -70,15 +113,11 @@ def migrate(sqlite_path: str) -> None:
                 print(f"- {table}: skipped (no overlapping columns)")
                 continue
 
-            col_list = ", ".join(cols)
-            placeholders = ", ".join(["%s"] * len(cols))
-            insert_sql = f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})"
+            copied = copy_table_rows(src, dest, table, cols)
+            print(f"- {table}: {copied} rows")
 
-            rows = src.execute(f"SELECT {col_list} FROM {table}").fetchall()
-            for row in rows:
-                values = tuple(row[col] for col in cols)
-                dest.execute(insert_sql, values)
-            print(f"- {table}: {len(rows)} rows")
+        for table in TABLE_ORDER:
+            sync_identity_sequence(dest, table)
 
     src.close()
     dest.close()
