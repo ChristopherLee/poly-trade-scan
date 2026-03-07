@@ -131,7 +131,7 @@ class TestCopyTradingLogic(unittest.TestCase):
         finally:
             os.remove(db_path)
 
-    def test_wallet_position_isolation_and_aggregate_recompute(self):
+    def test_wallet_position_isolation_and_aggregate_query(self):
         fd, db_path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
         try:
@@ -143,7 +143,6 @@ class TestCopyTradingLogic(unittest.TestCase):
 
                 db.upsert_wallet_position(conn, "0xwalletA", "token-1", 10.0, 5.0, 0.0)
                 db.upsert_wallet_position(conn, "0xwalletB", "token-1", 20.0, 12.0, 0.0)
-                db.recompute_aggregate_position(conn, "token-1")
 
                 wallet_a = db.get_wallet_position(conn, "0xwalletA", "token-1")
                 avg_entry = wallet_a["cost_basis"] / wallet_a["size"]
@@ -159,7 +158,6 @@ class TestCopyTradingLogic(unittest.TestCase):
                     wallet_a["cost_basis"],
                     wallet_a["realized_pnl"],
                 )
-                db.recompute_aggregate_position(conn, "token-1")
 
                 refreshed_a = db.get_wallet_position(conn, "0xwalletA", "token-1")
                 refreshed_b = db.get_wallet_position(conn, "0xwalletB", "token-1")
@@ -181,7 +179,6 @@ class TestCopyTradingLogic(unittest.TestCase):
                 db.upsert_wallet(conn, "0xwalletA")
                 db.upsert_market(conn, "token-1", question="Resolved", condition_id="cond-1", outcome_idx=0)
                 db.upsert_wallet_position(conn, "0xwalletA", "token-1", 10.0, 4.0, 1.0)
-                db.recompute_aggregate_position(conn, "token-1")
 
                 ResolutionWorker(db_path=db_path).process_resolution(
                     conn,

@@ -123,7 +123,6 @@ def main() -> None:
         )
 
         db.upsert_wallet_position(conn, wallet=wallet, token_id=token_id, size=20.1613, cost_basis=12.5, realized_pnl=0.81)
-        db.recompute_aggregate_position(conn, token_id)
         db.set_state(conn, "sample_generated_at", str(now))
 
     print(f"Sample DB written to {SAMPLE_DB_PATH}")

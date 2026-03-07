@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 import urllib.request
 
-from src.db import get_connection, init_db
+from src.db import AGGREGATE_POSITIONS_QUERY, get_connection, init_db
 from src.utils.logging import get_logger
 
 STATIC_DIR = Path(__file__).parent / "dashboard"
@@ -945,18 +945,29 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         resolved = conn.execute("SELECT COUNT(*) as c FROM markets WHERE resolved = 1").fetchone()["c"]
         unresolved_positions = conn.execute(
-            """SELECT COUNT(*) as c FROM positions p
-               JOIN markets m ON p.token_id = m.token_id
-               WHERE p.size > 0.0001 AND m.resolved = 0"""
+            """
+            SELECT COUNT(*) as c
+            FROM (
+                SELECT wp.token_id
+                FROM wallet_positions wp
+                JOIN markets m ON wp.token_id = m.token_id
+                WHERE m.resolved = 0
+                GROUP BY wp.token_id
+                HAVING COALESCE(SUM(wp.size), 0) > 0.0001
+            ) open_positions
+            """
         ).fetchone()["c"]
 
-        realized = conn.execute("SELECT COALESCE(SUM(realized_pnl), 0) as s FROM positions").fetchone()["s"]
+        realized = conn.execute(
+            "SELECT COALESCE(SUM(realized_pnl), 0) as s FROM wallet_positions"
+        ).fetchone()["s"]
 
         # unrealized: for open positions, use latest paper_trade avg_price as estimate
         unrealized_rows = conn.execute(
-            """SELECT p.token_id, p.size, p.cost_basis,
+            f"""SELECT p.token_id, p.size, p.cost_basis,
                       (SELECT pt.avg_price FROM paper_trades pt WHERE pt.token_id = p.token_id ORDER BY pt.created_at DESC LIMIT 1) as last_price
-               FROM positions p WHERE p.size > 0.0001"""
+               FROM ({AGGREGATE_POSITIONS_QUERY}) p
+               WHERE p.size > 0.0001"""
         ).fetchall()
         unrealized = sum(
             ((r["last_price"] if r["last_price"] is not None else (r["cost_basis"] / r["size"])) * r["size"]) - r["cost_basis"]
@@ -1035,21 +1046,26 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 w.enabled_at,
                 w.disabled_at,
                 COALESCE(trade_rollup.trade_count, 0) AS trade_count,
-                ROUND(COALESCE(trade_rollup.paper_volume, 0), 2) AS paper_volume,
-                ROUND(COALESCE(wallet_position_rollup.realized_pnl, 0), 2) AS realized_pnl,
-                ROUND(COALESCE(wallet_position_rollup.open_exposure, 0), 2) AS open_exposure,
-                ROUND(
-                    COALESCE(wallet_position_rollup.realized_pnl, 0)
-                    + COALESCE(wallet_position_rollup.unrealized_pnl, 0),
-                    2
-                ) AS wallet_total_pnl
+                COALESCE(trade_rollup.paper_volume, 0) AS paper_volume,
+                COALESCE(wallet_position_rollup.realized_pnl, 0) AS realized_pnl,
+                COALESCE(wallet_position_rollup.open_exposure, 0) AS open_exposure,
+                COALESCE(wallet_position_rollup.realized_pnl, 0)
+                    + COALESCE(wallet_position_rollup.unrealized_pnl, 0) AS wallet_total_pnl
             FROM wallets w
             LEFT JOIN trade_rollup ON trade_rollup.wallet = w.address
             LEFT JOIN wallet_position_rollup ON wallet_position_rollup.wallet = w.address
             ORDER BY w.tracking_enabled DESC, COALESCE(w.enabled_at, w.added_at) DESC, w.leaderboard_pnl DESC
             """
         ).fetchall()
-        self._json_response([dict(row) for row in rows])
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["paper_volume"] = round(float(item.get("paper_volume") or 0.0), 2)
+            item["realized_pnl"] = round(float(item.get("realized_pnl") or 0.0), 2)
+            item["open_exposure"] = round(float(item.get("open_exposure") or 0.0), 2)
+            item["wallet_total_pnl"] = round(float(item.get("wallet_total_pnl") or 0.0), 2)
+            result.append(item)
+        self._json_response(result)
 
     def _api_add_wallet(self, conn, payload):
         address = (payload.get("address") or "").strip().lower()
@@ -1157,7 +1173,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def _api_positions(self, conn, params):
         resolved_filter = params.get("resolved", [None])[0]
 
-        query = """
+        query = f"""
             SELECT p.token_id, p.size, p.cost_basis, p.realized_pnl, p.updated_at,
                    m.question, m.outcomes, m.outcome_idx, m.resolved, m.payout_value, m.category, m.group_item_title, m.slug,
                    (SELECT pt.avg_price FROM paper_trades pt WHERE pt.token_id = p.token_id ORDER BY pt.created_at DESC LIMIT 1) as last_price,
@@ -1165,13 +1181,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     FROM paper_trades pt
                     JOIN target_trades tt ON tt.id = pt.target_trade_id
                     WHERE pt.token_id = p.token_id) as source_wallet_count,
-                   (SELECT GROUP_CONCAT(DISTINCT tt.wallet)
+                   (SELECT STRING_AGG(DISTINCT tt.wallet, ',')
                     FROM paper_trades pt
                     JOIN target_trades tt ON tt.id = pt.target_trade_id
                     WHERE pt.token_id = p.token_id) as source_wallets,
                    (SELECT MIN(pt.created_at) FROM paper_trades pt WHERE pt.token_id = p.token_id) as entry_ts,
                    m.resolved_at as resolved_ts
-            FROM positions p
+            FROM ({AGGREGATE_POSITIONS_QUERY}) p
             LEFT JOIN markets m ON m.token_id = p.token_id
             WHERE 1=1
         """
@@ -1309,10 +1325,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def _api_pnl_by_category(self, conn):
         """Aggregate realized/unrealized PnL by market category."""
         # Get all positions with their categories
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT m.category, p.size, p.cost_basis, p.realized_pnl, m.resolved,
                    (SELECT pt.avg_price FROM paper_trades pt WHERE pt.token_id = p.token_id ORDER BY pt.created_at DESC LIMIT 1) as last_price
-            FROM positions p
+            FROM ({AGGREGATE_POSITIONS_QUERY}) p
             JOIN markets m ON p.token_id = m.token_id
         """).fetchall()
 

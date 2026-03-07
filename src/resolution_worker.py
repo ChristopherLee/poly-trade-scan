@@ -110,11 +110,12 @@ class ResolutionWorker:
         """Load token ids for unresolved markets that still have open positions."""
         with db.transaction(db_path=self.db_path) as conn:
             rows = conn.execute(
-                "SELECT DISTINCT p.token_id "
-                "FROM positions p "
-                "JOIN markets m ON p.token_id = m.token_id "
-                "WHERE p.size > 0.0001 "
-                "AND m.resolved = 0"
+                "SELECT wp.token_id "
+                "FROM wallet_positions wp "
+                "JOIN markets m ON wp.token_id = m.token_id "
+                "WHERE m.resolved = 0 "
+                "GROUP BY wp.token_id "
+                "HAVING COALESCE(SUM(wp.size), 0) > 0.0001"
             ).fetchall()
         return [row["token_id"] for row in rows if row["token_id"]]
 
@@ -220,23 +221,25 @@ class ResolutionWorker:
 
         with db.transaction(db_path=self.db_path) as conn:
             due_rows = conn.execute(
-                "SELECT DISTINCT m.token_id, m.condition_id, m.next_resolution_check "
-                "FROM positions p "
-                "JOIN markets m ON p.token_id = m.token_id "
-                "WHERE p.size > 0.0001 "
-                "AND m.resolved = 0 "
-                "AND (m.next_resolution_check IS NULL OR m.next_resolution_check <= ?)",
+                "SELECT m.token_id, m.condition_id, m.next_resolution_check "
+                "FROM wallet_positions wp "
+                "JOIN markets m ON wp.token_id = m.token_id "
+                "WHERE m.resolved = 0 "
+                "AND (m.next_resolution_check IS NULL OR m.next_resolution_check <= ?) "
+                "GROUP BY m.token_id, m.condition_id, m.next_resolution_check "
+                "HAVING COALESCE(SUM(wp.size), 0) > 0.0001",
                 (now,),
             ).fetchall()
 
             skipped_rows = conn.execute(
-                "SELECT DISTINCT m.token_id, m.condition_id, m.next_resolution_check "
-                "FROM positions p "
-                "JOIN markets m ON p.token_id = m.token_id "
-                "WHERE p.size > 0.0001 "
-                "AND m.resolved = 0 "
+                "SELECT m.token_id, m.condition_id, m.next_resolution_check "
+                "FROM wallet_positions wp "
+                "JOIN markets m ON wp.token_id = m.token_id "
+                "WHERE m.resolved = 0 "
                 "AND m.next_resolution_check IS NOT NULL "
-                "AND m.next_resolution_check > ?",
+                "AND m.next_resolution_check > ? "
+                "GROUP BY m.token_id, m.condition_id, m.next_resolution_check "
+                "HAVING COALESCE(SUM(wp.size), 0) > 0.0001",
                 (now,),
             ).fetchall()
 

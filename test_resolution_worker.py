@@ -63,6 +63,7 @@ class TestResolutionWorkerRealPayload(unittest.TestCase):
         try:
             db.init_db(db_path)
             with db.transaction(db_path=db_path) as conn:
+                db.upsert_wallet(conn, "0xresolutionwallet")
                 for idx, token in enumerate(clob_ids):
                     db.upsert_market(
                         conn,
@@ -71,7 +72,14 @@ class TestResolutionWorkerRealPayload(unittest.TestCase):
                         outcome_idx=idx,
                         condition_id=market.get("conditionId", ""),
                     )
-                db.upsert_position(conn, self.TOKEN_ID, size=5.0, cost_basis=2.0, realized_pnl=0.0)
+                db.upsert_wallet_position(
+                    conn,
+                    "0xresolutionwallet",
+                    self.TOKEN_ID,
+                    size=5.0,
+                    cost_basis=2.0,
+                    realized_pnl=0.0,
+                )
 
             ws_event = {
                 "conditionId": market.get("conditionId"),

@@ -24,10 +24,20 @@ INDEX_STATEMENTS = (
     "CREATE INDEX IF NOT EXISTS idx_paper_created_at ON paper_trades(created_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_ob_target ON orderbook_snapshots(target_trade_id)",
     "CREATE INDEX IF NOT EXISTS idx_ob_token ON orderbook_snapshots(token_id)",
-    "CREATE INDEX IF NOT EXISTS idx_positions_updated_at ON positions(updated_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_wallet_positions_wallet_updated ON wallet_positions(wallet, updated_at DESC)",
     "CREATE INDEX IF NOT EXISTS idx_wallet_positions_token_updated ON wallet_positions(token_id, updated_at DESC)",
 )
+
+AGGREGATE_POSITIONS_QUERY = """
+SELECT
+    wp.token_id,
+    COALESCE(SUM(wp.size), 0) AS size,
+    COALESCE(SUM(wp.cost_basis), 0) AS cost_basis,
+    COALESCE(SUM(wp.realized_pnl), 0) AS realized_pnl,
+    MAX(wp.updated_at) AS updated_at
+FROM wallet_positions wp
+GROUP BY wp.token_id
+"""
 
 
 def _translate_query(query: str) -> str:
@@ -218,15 +228,6 @@ def init_db(db_path: Optional[str] = None) -> None:
         total_ask_liquidity_usd DOUBLE PRECISION,
         captured_at     DOUBLE PRECISION NOT NULL,
         FOREIGN KEY (target_trade_id) REFERENCES target_trades(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS positions (
-        token_id        TEXT PRIMARY KEY,
-        size            DOUBLE PRECISION DEFAULT 0,
-        cost_basis      DOUBLE PRECISION DEFAULT 0,
-        realized_pnl    DOUBLE PRECISION DEFAULT 0,
-        updated_at      DOUBLE PRECISION,
-        FOREIGN KEY (token_id) REFERENCES markets(token_id)
     );
 
     CREATE TABLE IF NOT EXISTS wallet_positions (
@@ -421,6 +422,7 @@ def _migrate(conn: ManagedConnection) -> None:
     )
 
     _backfill_wallet_positions(conn)
+    conn.execute("DROP TABLE IF EXISTS positions")
 
     for statement in INDEX_STATEMENTS:
         conn.execute(statement)
@@ -428,12 +430,11 @@ def _migrate(conn: ManagedConnection) -> None:
 
 
 def _backfill_wallet_positions(conn: ManagedConnection) -> None:
-    """Populate wallet_positions and recompute aggregate positions when missing."""
+    """Populate wallet_positions from historical paper trades when missing."""
     wallet_position_count = conn.execute(
         "SELECT COUNT(*) AS c FROM wallet_positions"
     ).fetchone()["c"]
     if wallet_position_count:
-        _recompute_all_aggregate_positions(conn)
         return
 
     rows = conn.execute(
@@ -474,19 +475,6 @@ def _backfill_wallet_positions(conn: ManagedConnection) -> None:
             pos["cost_basis"],
             pos["realized_pnl"],
         )
-
-    _recompute_all_aggregate_positions(conn)
-
-
-def _recompute_all_aggregate_positions(conn: ManagedConnection) -> None:
-    token_ids = [
-        row["token_id"]
-        for row in conn.execute("SELECT DISTINCT token_id FROM wallet_positions").fetchall()
-    ]
-    conn.execute("DELETE FROM positions")
-    for token_id in token_ids:
-        recompute_aggregate_position(conn, token_id)
-    conn.commit()
 
 
 # ── Wallet helpers ────────────────────────────────────────────────
@@ -656,24 +644,23 @@ def insert_orderbook_snapshot(conn: ManagedConnection, target_trade_id: int,
 # ── Position helpers ──────────────────────────────────────────────
 
 def get_position(conn: ManagedConnection, token_id: str) -> dict:
-    row = conn.execute("SELECT * FROM positions WHERE token_id = %s", (token_id,)).fetchone()
+    row = conn.execute(
+        f"""
+        SELECT token_id, size, cost_basis, realized_pnl, updated_at
+        FROM ({AGGREGATE_POSITIONS_QUERY}) aggregated_positions
+        WHERE token_id = %s
+        """,
+        (token_id,),
+    ).fetchone()
     if row:
         return dict(row)
-    return {"token_id": token_id, "size": 0.0, "cost_basis": 0.0, "realized_pnl": 0.0}
-
-
-def upsert_position(conn: ManagedConnection, token_id: str,
-                    size: float, cost_basis: float, realized_pnl: float) -> None:
-    conn.execute("""
-        INSERT INTO positions (token_id, size, cost_basis, realized_pnl, updated_at)
-        VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT(token_id) DO UPDATE SET
-            size = EXCLUDED.size,
-            cost_basis = EXCLUDED.cost_basis,
-            realized_pnl = EXCLUDED.realized_pnl,
-            updated_at = EXCLUDED.updated_at
-    """, (token_id, size, cost_basis, realized_pnl, time.time()))
-    conn.commit()
+    return {
+        "token_id": token_id,
+        "size": 0.0,
+        "cost_basis": 0.0,
+        "realized_pnl": 0.0,
+        "updated_at": None,
+    }
 
 
 def get_wallet_position(conn: ManagedConnection, wallet: str, token_id: str) -> dict:
@@ -706,26 +693,6 @@ def upsert_wallet_position(conn: ManagedConnection, wallet: str, token_id: str,
     conn.commit()
 
 
-def recompute_aggregate_position(conn: ManagedConnection, token_id: str) -> None:
-    row = conn.execute(
-        """
-        SELECT COALESCE(SUM(size), 0) AS size,
-               COALESCE(SUM(cost_basis), 0) AS cost_basis,
-               COALESCE(SUM(realized_pnl), 0) AS realized_pnl
-        FROM wallet_positions
-        WHERE token_id = %s
-        """,
-        (token_id,),
-    ).fetchone()
-    upsert_position(
-        conn,
-        token_id,
-        float(row["size"] or 0.0),
-        float(row["cost_basis"] or 0.0),
-        float(row["realized_pnl"] or 0.0),
-    )
-
-
 def get_target_wallet_open_size_before_trade(conn: ManagedConnection, wallet: str,
                                              token_id: str, target_trade_id: int) -> float:
     row = conn.execute(
@@ -751,16 +718,6 @@ def settle_wallet_positions_for_token(conn: ManagedConnection, token_id: str, pa
         (token_id,),
     ).fetchall()
     if not rows:
-        pos = get_position(conn, token_id)
-        if pos and float(pos["size"] or 0.0) > 0.0001:
-            realized_gain = (payout_value * pos["size"]) - pos["cost_basis"]
-            upsert_position(
-                conn,
-                token_id,
-                0.0,
-                0.0,
-                float(pos["realized_pnl"] or 0.0) + realized_gain,
-            )
         return
 
     for row in rows:
@@ -774,7 +731,6 @@ def settle_wallet_positions_for_token(conn: ManagedConnection, token_id: str, pa
             0.0,
             float(pos["realized_pnl"] or 0.0) + realized_gain,
         )
-    recompute_aggregate_position(conn, token_id)
 
 
 # ── Live position helpers ─────────────────────────────────────────

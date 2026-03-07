@@ -21,7 +21,6 @@ TABLE_ORDER = [
     "target_trades",
     "paper_trades",
     "orderbook_snapshots",
-    "positions",
     "wallet_positions",
     "run_state",
     "live_source_positions",
@@ -101,7 +100,7 @@ def migrate(sqlite_path: str) -> None:
     with db.transaction(dest):
         print("[3/4] Truncating destination tables...")
         dest.execute(
-            "TRUNCATE TABLE live_trades, live_risk_events, live_wallet_positions, live_source_positions, orderbook_snapshots, paper_trades, target_trades, wallet_positions, positions, run_state, markets, wallets RESTART IDENTITY CASCADE"
+            "TRUNCATE TABLE live_trades, live_risk_events, live_wallet_positions, live_source_positions, orderbook_snapshots, paper_trades, target_trades, wallet_positions, run_state, markets, wallets RESTART IDENTITY CASCADE"
         )
 
         print("[4/4] Copying rows...")
