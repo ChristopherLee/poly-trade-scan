@@ -169,6 +169,29 @@ Each RPC request has a 1-second timeout. Not all RPC providers return HTTP 429 w
 
 Failed requests are retried up to 3 times with a short delay between attempts. If a request still fails after all retries, the download aborts immediately. A healthy endpoint operating within its rate limit should never need more than 3 attempts — persistent failures indicate a deeper issue (bad endpoint, network problems, or rate limit misconfiguration).
 
+## UI Smoke Test
+
+For wallet-detail UI work, use the repo scripts instead of manual port/process cleanup.
+
+```powershell
+# 1) Restart the Python dashboard if needed
+bash ./scripts/restart_dashboard.sh
+
+# 2) Rebuild and restart the production Next UI on port 3000
+bash ./scripts/restart_ui.sh
+
+# 3) Run the wallet-detail smoke test and capture a screenshot
+bash ./scripts/verify_wallet_detail.sh \
+  --wallet 0xd1ebe815f921b3ebbd8d9e0a4192c6ab18360f5c
+```
+
+The smoke test validates:
+
+- `/api/wallet_detail?wallet=...` returns `200`
+- `/wallets/<address>` returns `200`
+- the wallet page includes the expected timeline heading
+- a browser screenshot is captured to `assets/logs/wallet-detail-smoke.png`
+
 ## Feedback & Contact
 
 If you have any questions, ideas on how to extend the code, or suggestions for new features, I'd love to hear them.

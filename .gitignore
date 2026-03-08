@@ -217,3 +217,5 @@ __marimo__/
 paper_trades.db
 paper_trades.db-wal
 paper_trades.db-shm
+assets/logs/*.png
+assets/logs/*.pid

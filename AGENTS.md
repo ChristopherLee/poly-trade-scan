@@ -74,6 +74,8 @@ Dashboard verification tips:
 - For UI regressions, use Playwright against `http://localhost:8050/` so you are testing the running dashboard, including API wiring.
 - For any dashboard code change, perform the live verification flow automatically before replying. Do not wait for the user to ask.
 - If the live server is stale, stop the stale `dashboard.py` process, restart it, then repeat API and UI verification before replying.
+- For Next UI work on port `3000`, use `scripts/restart_ui.sh` to rebuild and restart the production UI instead of reusing an old `next start` process.
+- For wallet detail regressions, use `scripts/verify_wallet_detail.sh --wallet 0x...` to check the backend route, the UI route, and capture a Playwright screenshot in one pass.
 
 
 ### Dashboard Test Data (Recommended)

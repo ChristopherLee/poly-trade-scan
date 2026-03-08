@@ -11,6 +11,10 @@ DASHBOARD_SCRIPT="${REPO_ROOT}/dashboard.py"
 LOG_DIR="${REPO_ROOT}/assets/logs"
 STDOUT_LOG="${LOG_DIR}/dashboard.stdout.log"
 STDERR_LOG="${LOG_DIR}/dashboard.stderr.log"
+CMD_EXE="${CMD_EXE:-/mnt/c/Windows/System32/cmd.exe}"
+NETSTAT_EXE="${NETSTAT_EXE:-/mnt/c/Windows/System32/netstat.exe}"
+TASKKILL_EXE="${TASKKILL_EXE:-/mnt/c/Windows/System32/taskkill.exe}"
+CURL_EXE="${CURL_EXE:-/mnt/c/Windows/System32/curl.exe}"
 
 if [[ ! -f "${PYTHON_EXE}" ]]; then
   echo "Python interpreter not found at ${PYTHON_EXE}" >&2
@@ -24,8 +28,22 @@ fi
 
 mkdir -p "${LOG_DIR}"
 
+to_windows_path() {
+  if command -v wslpath >/dev/null 2>&1; then
+    wslpath -w "$1"
+    return
+  fi
+
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$1"
+    return
+  fi
+
+  printf '%s\n' "$1"
+}
+
 get_listener_pids() {
-  netstat -ano -p tcp 2>/dev/null | awk -v port=":${PORT}" '
+  "${NETSTAT_EXE}" -ano -p tcp 2>/dev/null | tr -d '\r' | awk -v port=":${PORT}" '
     index($2, port) && $4 == "LISTENING" { print $5 }
   ' | sort -u
 }
@@ -57,33 +75,36 @@ wait_for_port_state() {
 
 stop_dashboard_listeners() {
   local pids
-  pids="$(get_listener_pids)"
+  local saw_listener=0
 
-  if [[ -z "${pids}" ]]; then
-    echo "No listeners on port ${PORT}."
-    return 0
-  fi
+  while true; do
+    pids="$(get_listener_pids)"
 
-  while IFS= read -r listener_pid; do
-    [[ -z "${listener_pid}" ]] && continue
-    echo "Stopping PID ${listener_pid} on port ${PORT}..."
-    taskkill //PID "${listener_pid}" //F >/dev/null
-  done <<< "${pids}"
+    if [[ -z "${pids}" ]]; then
+      if [[ "${saw_listener}" -eq 0 ]]; then
+        echo "No listeners on port ${PORT}."
+      fi
+      return 0
+    fi
 
-  sleep 1
+    saw_listener=1
+
+    while IFS= read -r listener_pid; do
+      [[ -z "${listener_pid}" ]] && continue
+      echo "Stopping PID ${listener_pid} on port ${PORT}..."
+      "${TASKKILL_EXE}" /PID "${listener_pid}" /F >/dev/null
+    done <<< "${pids}"
+
+    sleep 1
+  done
 }
 
 wait_for_dashboard() {
-  local dashboard_pid="$1"
-  local timeout_seconds="${2:-20}"
+  local timeout_seconds="${1:-20}"
   local deadline=$((SECONDS + timeout_seconds))
 
   while (( SECONDS < deadline )); do
-    if ! kill -0 "${dashboard_pid}" 2>/dev/null; then
-      return 1
-    fi
-
-    if curl --silent --show-error --fail --max-time 3 "${DASHBOARD_URL}" >/dev/null; then
+    if "${CURL_EXE}" --silent --show-error --fail --max-time 3 "${DASHBOARD_URL}" >/dev/null 2>/dev/null; then
       return 0
     fi
 
@@ -102,21 +123,26 @@ if ! wait_for_port_state false 20; then
 fi
 
 echo "Starting dashboard from ${DASHBOARD_SCRIPT}..."
-"${PYTHON_EXE}" "${DASHBOARD_SCRIPT}" >"${STDOUT_LOG}" 2>"${STDERR_LOG}" &
-dashboard_pid=$!
+python_exe_win="$(to_windows_path "${PYTHON_EXE}")"
+dashboard_script_win="$(to_windows_path "${DASHBOARD_SCRIPT}")"
+(
+  cd "${REPO_ROOT}"
+  "${CMD_EXE}" /c "${python_exe_win}" "${dashboard_script_win}" >"${STDOUT_LOG}" 2>"${STDERR_LOG}" &
+)
 
 if ! wait_for_port_state true 20; then
-  echo "Dashboard process did not bind to port ${PORT}. PID=${dashboard_pid}" >&2
+  echo "Dashboard process did not bind to port ${PORT}." >&2
   tail -n 20 "${STDERR_LOG}" 2>/dev/null || true
   exit 1
 fi
 
-if ! wait_for_dashboard "${dashboard_pid}" 20; then
-  echo "Dashboard failed to become healthy on ${DASHBOARD_URL}. PID=${dashboard_pid}" >&2
+if ! wait_for_dashboard 20; then
+  echo "Dashboard failed to become healthy on ${DASHBOARD_URL}." >&2
   tail -n 20 "${STDERR_LOG}" 2>/dev/null || true
   exit 1
 fi
 
-echo "Dashboard is healthy on http://localhost:${PORT}/ (PID ${dashboard_pid})."
+listener_pids="$(get_listener_pids | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+echo "Dashboard is healthy on http://localhost:${PORT}/ (PID ${listener_pids})."
 echo "stdout: ${STDOUT_LOG}"
 echo "stderr: ${STDERR_LOG}"

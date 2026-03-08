@@ -38,6 +38,86 @@ function compareNumber(left: number | null | undefined, right: number | null | u
   return (left ?? 0) - (right ?? 0);
 }
 
+function formatTimelineTick(timestamp: number, spanSeconds: number) {
+  const date = new Date(timestamp * 1000);
+
+  if (spanSeconds < 12 * 60 * 60) {
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  if (spanSeconds < 7 * 24 * 60 * 60) {
+    return date.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function formatTimelineRange(startTs?: number | null, endTs?: number | null) {
+  if (!startTs || !endTs) {
+    return "Waiting for copied marks";
+  }
+
+  const start = new Date(startTs * 1000);
+  const end = new Date(endTs * 1000);
+  const sameDay = start.toDateString() === end.toDateString();
+
+  if (sameDay) {
+    return `${start.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })} - ${start.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    })} to ${end.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    })}`;
+  }
+
+  return `${start.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })} to ${end.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
+}
+
+function formatTimelineSpan(startTs?: number | null, endTs?: number | null) {
+  if (!startTs || !endTs) {
+    return "-";
+  }
+
+  const totalMinutes = Math.max(Math.round((endTs - startTs) / 60), 0);
+
+  if (totalMinutes < 60) {
+    return `${totalMinutes}m`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (!minutes) {
+    return `${hours}h`;
+  }
+
+  return `${hours}h ${minutes}m`;
+}
+
+function uniqueNumericValues(values: number[]) {
+  return values.filter((value, index) => values.findIndex((candidate) => Math.abs(candidate - value) < 0.001) === index);
+}
+
 function PaginationControls({
   page,
   totalPages,
@@ -113,43 +193,142 @@ export function MetricCard({
   );
 }
 
+function HeroInfoCard({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+}) {
+  return (
+    <div className="rounded-[22px] border border-white/12 bg-white/[0.08] p-4 backdrop-blur-sm">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">{label}</p>
+      <p className="mt-2 text-base font-semibold text-white sm:text-lg">{value}</p>
+      {note ? <p className="mt-1 text-sm text-white/65">{note}</p> : null}
+    </div>
+  );
+}
+
 export function PnlWave({ points }: { points: WalletTimelinePoint[] }) {
   if (!points.length) {
-    return <div className="flex h-44 items-center justify-center text-sm text-slate-500">No PnL timeline yet.</div>;
+    return <div className="flex h-[320px] items-center justify-center text-sm text-slate-500">No PnL timeline yet.</div>;
   }
 
-  const values = points.map((point) => point.total_pnl);
+  const sortedPoints = [...points].sort((left, right) => left.ts - right.ts);
+  const firstPoint = sortedPoints[0];
+  const lastPoint = sortedPoints.at(-1) ?? firstPoint;
+  const values = sortedPoints.map((point) => point.total_pnl);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const range = max - min || 1;
-  const positive = (values.at(-1) ?? 0) >= 0;
-
-  const coordinates = points
-    .map((point, index) => {
-      const x = (index / Math.max(points.length - 1, 1)) * 100;
-      const y = 100 - ((point.total_pnl - min) / range) * 100;
-      return `${x},${y}`;
-    })
+  const spanSeconds = Math.max(lastPoint.ts - firstPoint.ts, 1);
+  const positive = (lastPoint.total_pnl ?? 0) >= 0;
+  const domainMin = Math.min(min, 0);
+  const domainMax = Math.max(max, 0);
+  const domainSpan = domainMax - domainMin || Math.max(Math.abs(domainMax), 1);
+  const valuePadding = Math.max(domainSpan * 0.08, 1);
+  const paddedMin = domainMin - valuePadding;
+  const paddedMax = domainMax + valuePadding;
+  const paddedRange = paddedMax - paddedMin || 1;
+  const svgWidth = 160;
+  const svgHeight = 100;
+  const chartLeft = 12;
+  const chartRight = 4;
+  const chartTop = 8;
+  const chartBottom = 18;
+  const chartWidth = svgWidth - chartLeft - chartRight;
+  const chartHeight = svgHeight - chartTop - chartBottom;
+  const xForTs = (timestamp: number) => chartLeft + ((timestamp - firstPoint.ts) / spanSeconds) * chartWidth;
+  const yForValue = (value: number) => chartTop + ((paddedMax - value) / paddedRange) * chartHeight;
+  const linePath = sortedPoints
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${xForTs(point.ts).toFixed(2)} ${yForValue(point.total_pnl).toFixed(2)}`)
     .join(" ");
-
-  const area = `0,100 ${coordinates} 100,100`;
+  const areaPath = `${linePath} L ${xForTs(lastPoint.ts).toFixed(2)} ${(chartTop + chartHeight).toFixed(2)} L ${xForTs(firstPoint.ts).toFixed(2)} ${(chartTop + chartHeight).toFixed(2)} Z`;
+  const lastX = xForTs(lastPoint.ts);
+  const lastY = yForValue(lastPoint.total_pnl);
+  const xTicks = uniqueNumericValues([firstPoint.ts, firstPoint.ts + spanSeconds / 2, lastPoint.ts]);
+  const yTicks = uniqueNumericValues([max, 0, min]).filter(
+    (value) => value >= paddedMin - 0.001 && value <= paddedMax + 0.001,
+  );
 
   return (
-    <svg viewBox="0 0 100 100" className="h-44 w-full">
+    <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="h-[320px] w-full sm:h-[360px]">
       <defs>
         <linearGradient id="wallet-pnl-fill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={positive ? "#12715b" : "#b45309"} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={positive ? "#12715b" : "#b45309"} stopOpacity="0.04" />
+          <stop offset="0%" stopColor={positive ? "#12715b" : "#b45309"} stopOpacity="0.30" />
+          <stop offset="100%" stopColor={positive ? "#12715b" : "#b45309"} stopOpacity="0.05" />
         </linearGradient>
       </defs>
-      <path d={`M ${area}`} fill="url(#wallet-pnl-fill)" />
-      <polyline
+
+      {yTicks.map((value) => {
+        const y = yForValue(value);
+        return (
+          <g key={`y-${value.toFixed(3)}`}>
+            <line
+              x1={chartLeft}
+              x2={chartLeft + chartWidth}
+              y1={y}
+              y2={y}
+              stroke={Math.abs(value) < 0.001 ? "#94a3b8" : "#e2e8f0"}
+              strokeDasharray={Math.abs(value) < 0.001 ? undefined : "2 3"}
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+            <text
+              x={chartLeft - 2}
+              y={y}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fontSize="4"
+              fill="#64748b"
+            >
+              {Math.abs(value) < 0.001 ? "Flat" : formatSignedMoney(value)}
+            </text>
+          </g>
+        );
+      })}
+
+      {xTicks.map((timestamp, index) => {
+        const x = xForTs(timestamp);
+        const anchor = index === 0 ? "start" : index === xTicks.length - 1 ? "end" : "middle";
+
+        return (
+          <g key={`x-${timestamp.toFixed(3)}`}>
+            <line
+              x1={x}
+              x2={x}
+              y1={chartTop}
+              y2={chartTop + chartHeight}
+              stroke="#f1f5f9"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+            <text
+              x={x}
+              y={svgHeight - 6}
+              textAnchor={anchor}
+              fontSize="4"
+              fill="#64748b"
+            >
+              {formatTimelineTick(timestamp, spanSeconds)}
+            </text>
+          </g>
+        );
+      })}
+
+      <path d={areaPath} fill="url(#wallet-pnl-fill)" />
+      <path
+        d={linePath}
         fill="none"
-        points={coordinates}
         stroke={positive ? "#12715b" : "#b45309"}
         strokeWidth="2.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
         vectorEffect="non-scaling-stroke"
       />
+      <circle cx={lastX} cy={lastY} r="2.4" fill={positive ? "#12715b" : "#b45309"} />
+      <circle cx={lastX} cy={lastY} r="4.4" fill="none" stroke={positive ? "#12715b" : "#b45309"} strokeOpacity="0.2" />
     </svg>
   );
 }
@@ -527,7 +706,7 @@ export function TrackedWalletsDirectoryPage({
   );
 
   return (
-    <main className="mx-auto min-h-screen max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+    <main className="mx-auto min-h-screen max-w-[1760px] px-4 py-6 sm:px-6 lg:px-8">
       <section className="panel-hero relative overflow-hidden p-8 sm:p-10">
         <div className="grid gap-8 lg:grid-cols-[1.35fr_0.9fr]">
           <div>
@@ -634,109 +813,129 @@ export function WalletDetailPage({
   detail: WalletDetail;
   trades: WalletTradeRow[];
 }) {
+  const fillSummary = detail.summary.total_target_trades
+    ? `${detail.summary.filled_trades}/${detail.summary.total_target_trades} copied fills`
+    : "No copied fills yet";
+  const latencyValue = detail.summary.avg_latency_ms
+    ? `${Math.round(detail.summary.avg_latency_ms)}ms`
+    : "-";
+  const timelineStartTs = detail.pnl_timeline[0]?.ts ?? null;
+  const timelineEndTs = detail.pnl_timeline.at(-1)?.ts ?? null;
+  const timelineRangeLabel = formatTimelineRange(timelineStartTs, timelineEndTs);
+  const timelineSpanLabel = formatTimelineSpan(timelineStartTs, timelineEndTs);
+
   return (
-    <main className="mx-auto min-h-screen max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
-      <section className="panel-hero relative overflow-hidden p-8 sm:p-10">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="eyebrow text-white/50">Wallet Detail</p>
-            <h1 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              {detail.wallet.alias || formatAddress(detail.wallet.address)}
-            </h1>
-            <p className="mt-3 font-[var(--font-mono)] text-sm text-white/65">{detail.wallet.address}</p>
-          </div>
-          <div className="flex gap-3">
-            <Link
-              href="/"
-              className="rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-            >
-              Back to wallets
-            </Link>
-            <a
-              href={`https://polymarket.com/profile/${detail.wallet.address}`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-100"
-            >
-              Open Polymarket profile
-            </a>
-          </div>
-        </div>
-      </section>
+    <main className="mx-auto min-h-screen max-w-[1760px] px-4 py-5 sm:px-6 lg:px-8">
+      <section className="panel-hero relative overflow-hidden p-6 sm:p-8">
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-full bg-[radial-gradient(circle_at_85%_15%,rgba(255,255,255,0.14),transparent_30%)]" />
+        <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)] xl:items-end">
+          <div className="space-y-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-4xl">
+                <p className="eyebrow text-white/50">Wallet Detail</p>
+                <h1 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl">
+                  {detail.wallet.alias || formatAddress(detail.wallet.address)}
+                </h1>
+                <p className="mt-3 font-[var(--font-mono)] text-sm text-white/65">{detail.wallet.address}</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/"
+                  className="rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                >
+                  Back to wallets
+                </Link>
+                <a
+                  href={`https://polymarket.com/profile/${detail.wallet.address}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-100"
+                >
+                  Open Polymarket profile
+                </a>
+              </div>
+            </div>
 
-      <section className="panel mt-6 overflow-hidden">
-        <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="border-b border-slate-200 p-6 sm:p-8 lg:border-b-0 lg:border-r">
-            <p className="eyebrow">Summary</p>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                label="Total PnL"
-                value={formatSignedMoney(detail.summary.total_pnl)}
-                tone={pnlTone(detail.summary.total_pnl)}
-                note={`${detail.summary.winning_trades} wins / ${detail.summary.losing_trades} losses`}
-              />
-              <MetricCard
-                label="Realized"
-                value={formatSignedMoney(detail.summary.realized_pnl)}
-                tone={pnlTone(detail.summary.realized_pnl)}
-                note={`${detail.summary.active_positions} active positions`}
-              />
-              <MetricCard
-                label="Copied Volume"
-                value={formatMoney(detail.summary.paper_volume)}
-                note={`${detail.summary.filled_trades}/${detail.summary.total_target_trades} fills`}
-              />
-              <MetricCard
-                label="Avg Latency"
-                value={detail.summary.avg_latency_ms ? `${Math.round(detail.summary.avg_latency_ms)}ms` : "—"}
-                note={`${detail.summary.no_fill_buy_entry_count} no-fill entries`}
-              />
+            <div className="flex flex-wrap gap-3 text-sm text-white/80">
+              <div className="rounded-full border border-white/15 bg-white/[0.08] px-4 py-2">
+                {detail.summary.active_positions} active positions
+              </div>
+              <div className="rounded-full border border-white/15 bg-white/[0.08] px-4 py-2">{fillSummary}</div>
+              <div className="rounded-full border border-white/15 bg-white/[0.08] px-4 py-2">
+                {detail.summary.winning_trades} wins / {detail.summary.losing_trades} losses
+              </div>
             </div>
           </div>
 
-          <div className="bg-[#f5f1e8] p-6 sm:p-8">
-            <p className="eyebrow">Context</p>
-            <dl className="mt-4 space-y-4 text-sm">
-              <div>
-                <dt className="text-slate-500">Source</dt>
-                <dd className="mt-1 text-lg font-semibold text-slate-950">{detail.wallet.source}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Tracking</dt>
-                <dd className="mt-1 text-lg font-semibold text-slate-950">
-                  {detail.wallet.tracking_enabled ? "Enabled" : "Disabled"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Added</dt>
-                <dd className="mt-1 text-lg font-semibold text-slate-950">{formatTimestamp(detail.wallet.added_at)}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Leaderboard Volume</dt>
-                <dd className="mt-1 text-lg font-semibold text-slate-950">{formatMoney(detail.wallet.leaderboard_vol, true)}</dd>
-              </div>
-            </dl>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <HeroInfoCard label="Source" value={detail.wallet.source} note="Tracked cohort" />
+            <HeroInfoCard
+              label="Tracking"
+              value={detail.wallet.tracking_enabled ? "Enabled" : "Disabled"}
+              note={latencyValue === "-" ? "Latency pending" : `Average latency ${latencyValue}`}
+            />
+            <HeroInfoCard
+              label="Added"
+              value={formatTimestamp(detail.wallet.added_at)}
+              note={`${detail.summary.paper_trade_rows} paper rows captured`}
+            />
+            <HeroInfoCard
+              label="Leaderboard Volume"
+              value={formatMoney(detail.wallet.leaderboard_vol, true)}
+              note={`${detail.summary.opened_positions} opens / ${detail.summary.closed_positions} closes`}
+            />
           </div>
         </div>
       </section>
 
-      <section className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="panel p-6 sm:p-8">
-          <div className="flex items-center justify-between gap-4">
+      <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Total PnL"
+          value={formatSignedMoney(detail.summary.total_pnl)}
+          tone={pnlTone(detail.summary.total_pnl)}
+          note={`${detail.summary.winning_trades} wins / ${detail.summary.losing_trades} losses`}
+        />
+        <MetricCard
+          label="Realized"
+          value={formatSignedMoney(detail.summary.realized_pnl)}
+          tone={pnlTone(detail.summary.realized_pnl)}
+          note={`${detail.summary.active_positions} active positions`}
+        />
+        <MetricCard
+          label="Copied Volume"
+          value={formatMoney(detail.summary.paper_volume)}
+          note={fillSummary}
+        />
+        <MetricCard
+          label="Avg Latency"
+          value={latencyValue}
+          note={`${detail.summary.no_fill_buy_entry_count} no-fill entries`}
+        />
+      </section>
+
+      <section className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+        <div className="panel p-6 sm:p-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="eyebrow">Total PnL Timeline</p>
-              <h3 className="mt-2 text-2xl font-semibold text-slate-950">Marked to current outcome state</h3>
+              <p className="eyebrow">PnL Timeline</p>
+              <h3 className="mt-2 text-2xl font-semibold text-slate-950">Marked-to-market copied PnL</h3>
+              <p className="mt-2 text-sm text-slate-500">{timelineRangeLabel}</p>
             </div>
-            <p className={`text-lg font-semibold ${pnlTone(detail.summary.total_pnl)}`}>
-              {formatSignedMoney(detail.summary.total_pnl)}
-            </p>
+            <div className="text-left lg:text-right">
+              <p className={`text-lg font-semibold ${pnlTone(detail.summary.total_pnl)}`}>
+                {formatSignedMoney(detail.summary.total_pnl)}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {timelineSpanLabel} span - {detail.pnl_timeline.length} marks
+              </p>
+            </div>
           </div>
-          <div className="mt-8">
+          <div className="mt-6">
             <PnlWave points={detail.pnl_timeline} />
           </div>
         </div>
 
-        <div className="panel p-6 sm:p-8">
+        <div className="panel p-6 sm:p-7">
           <p className="eyebrow">Realized Trade PnL</p>
           <h3 className="mt-2 text-2xl font-semibold text-slate-950">Realized PnL by close window</h3>
           <div className="mt-8">
@@ -752,7 +951,7 @@ export function WalletDetailPage({
         </div>
       </section>
 
-      <section className="panel mt-6 p-6 sm:p-8">
+      <section className="panel mt-6 p-6 sm:p-7">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
             <p className="eyebrow">Open Positions</p>
@@ -763,7 +962,7 @@ export function WalletDetailPage({
         <PositionsTable detail={detail} />
       </section>
 
-      <section className="panel mt-6 p-6 sm:p-8">
+      <section className="panel mt-6 p-6 sm:p-7">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
             <p className="eyebrow">Copied Trade History</p>
